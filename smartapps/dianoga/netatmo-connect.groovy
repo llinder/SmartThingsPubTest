@@ -11,7 +11,7 @@ private getVendorTokenPath(){ "http://api.netatmo.net/oauth2/token" }
 private getVendorIcon()		{ "https://s3.amazonaws.com/smartapp-icons/Partner/netamo-icon-1%402x.png" }
 private getClientId() 		{ appSettings.clientId }
 private getClientSecret() 	{ appSettings.clientSecret }
-private getServerUrl() 		{ appSettings.serverUrl }
+private getServerUrl() 		{ "https://graph.api.smartthings.com" }
 
 // Automatically generated. Make future change here.
 definition(
@@ -26,7 +26,6 @@ definition(
 ){
 	appSetting "clientId"
 	appSetting "clientSecret"
-	appSetting "serverUrl"
 }
 
 preferences {
@@ -377,6 +376,14 @@ def initialize() {
 					log.debug "Outdoor module"
 					createChildDevice("Netatmo Outdoor Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
+				case 'NAModule3':
+					log.debug "Rain Gauge"
+					createChildDevice("Netatmo Rain", deviceId, "${detail.type}.${deviceId}", detail.module_name)
+					break
+				case 'NAModule4':
+					log.debug "Additional module"
+					createChildDevice("Netatmo Additional Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
+					break
 			}
 		} catch (Exception e) {
 			log.error "Error creating device: ${e}"
@@ -519,6 +526,16 @@ def poll() {
 			case 'NAModule1':
 				log.debug "Updating NAModule1 $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as Integer, unit: getTemperatureScale())
+				child?.sendEvent(name: 'humidity', value: data['Humidity'])
+				break;
+			case 'NAModule3':
+				log.debug "Updating NAModule3 $data"
+				child?.sendEvent(name: 'rain', value: data['Rain'])
+				break;
+			case 'NAModule4':
+				log.debug "Updating NAModule4 $data"
+				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as Integer)
+				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'])
 				child?.sendEvent(name: 'humidity', value: data['Humidity'])
 				break;
 		}
