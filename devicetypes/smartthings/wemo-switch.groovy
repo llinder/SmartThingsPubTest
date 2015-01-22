@@ -25,10 +25,8 @@ metadata {
 	// UI tile definitions
 	tiles {
 		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821", nextState:"turningOff"
-			state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
-			state "turningOn", label:'${name}', icon:"st.switches.switch.on", backgroundColor:"#79b821"
-			state "turningOff", label:'${name}', icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+			state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
+			state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
 		}
 		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -91,7 +89,6 @@ def parse(String description) {
 	result
 }
 
-////////////////////////////
 private getTime() {
 	// This is essentially System.currentTimeMillis()/1000, but System is disallowed by the sandbox.
 	((new GregorianCalendar().time.time / 1000l).toInteger()).toString()
@@ -110,21 +107,26 @@ private String convertHexToIP(hex) {
 }
 
 private getHostAddress() {
-	def parts = device.deviceNetworkId.split(":")
-	def ip, port
-	if (parts.length == 2) {
-		ip = parts[0]
-		port = parts[1]
-	} else {
-		ip = getDeviceDataByName("ip")
-		port = getDeviceDataByName("port")
+	def ip = getDataValue("ip")
+	def port = getDataValue("port")
+
+	if (!ip || !port) {
+		def parts = device.deviceNetworkId.split(":")
+		if (parts.length == 2) {
+			ip = parts[0]
+			port = parts[1]
+		} else {
+			log.warn "Can't figure out ip and port for device: ${device.id}"
+		}
 	}
+	log.debug "Using ip: ${ip} and port: ${port} for device: ${device.id}"
 	return convertHexToIP(ip) + ":" + convertHexToInt(port)
 }
 
-////////////////////////////
+
 def on() {
 	log.debug "Executing 'on'"
+    sendEvent(name: "switch", value: "on")
 def turnOn = new physicalgraph.device.HubAction("""POST /upnp/control/basicevent1 HTTP/1.1
 SOAPAction: "urn:Belkin:service:basicevent:1#SetBinaryState"
 Host: ${getHostAddress()}
@@ -140,10 +142,10 @@ Content-Length: 333
 </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>""", physicalgraph.device.Protocol.LAN)
 }
-////////////////////////////
+
 def off() {
 	log.debug "Executing 'off'"
-
+	sendEvent(name: "switch", value: "off")
 	def turnOff = new physicalgraph.device.HubAction("""POST /upnp/control/basicevent1 HTTP/1.1
 SOAPAction: "urn:Belkin:service:basicevent:1#SetBinaryState"
 Host: ${getHostAddress()}
@@ -178,13 +180,11 @@ User-Agent: CyberGarage-HTTP/1.0
 </s:Envelope>""", physicalgraph.device.Protocol.LAN)
 }*/
 
-////////////////////////////
 def refresh() {
 	log.debug "Executing WeMo Switch 'subscribe', then 'timeSyncResponse', then 'poll'"
 	[subscribe(), timeSyncResponse(), poll()]
 }
 
-////////////////////////////
 def subscribe(hostAddress) {
 log.debug "Executing 'subscribe()'"
 def address = getCallBackAddress()

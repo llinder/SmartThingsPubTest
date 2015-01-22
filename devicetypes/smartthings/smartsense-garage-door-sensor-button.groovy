@@ -15,6 +15,7 @@ metadata {
 		capability "Temperature Measurement"
 		capability "Sensor"
 		capability "Battery"
+		capability "Door Control"
 
 		attribute "status", "string"
 		attribute "buttonPress", "string"
@@ -75,11 +76,31 @@ metadata {
 		main(["status","contact", "acceleration"])
 		details(["status","contact", "acceleration", "temperature", "3axis", "battery"/*, "lqi"*/])
 	}
-    
+
 	preferences {
-		input description: "The offset allows you to calibrate your temperature. Update by entering whole negative or positive number. E.g. -3 or 5.", displayDuringSetup: false, type: "paragraph", element: "paragraph"
+		input description: "This feature allows you to correct any temperature variations by selecting an offset. Ex: If your sensor consistently reports a temp that's 5 degrees too warm, you'd enter \"-5\". If 3 degrees too cold, enter \"+3\".", displayDuringSetup: false, type: "paragraph", element: "paragraph"
 		input "tempOffset", "number", title: "Temperature Offset", description: "Adjust temperature by this many degrees", range: "*..*", displayDuringSetup: false
-	}    
+	}
+}
+
+def open() {
+	if (device.currentValue("status") != "open") {
+		log.debug "Sending button press event to open door"
+		sendEvent(name: "buttonPress", value: "true", isStateChange: true, unit: "")
+	}
+	else {
+		log.debug "Not opening door since it is already open"
+	}
+}
+
+def close() {
+	if (device.currentValue("status") != "closed") {
+		log.debug "Sending button press event to close door"
+		sendEvent(name: "buttonPress", value: "true", isStateChange: true, unit: "")
+	}
+	else {
+		log.debug "Not closing door since it is already closed"
+	}
 }
 
 def parse(String description) {
@@ -100,20 +121,7 @@ def parse(String description) {
 
 def actuate() {
 	log.debug "Sending button press event"
-	sendEvent(name: "buttonPress", value: "true", isStateChange: true)
-}
-
-private motionDirection() {
-	def dir = device.currentValue("status")
-	if (dir == "open") {
-		"closing"
-	}
-	else if (dir == "closed") {
-		"opening"
-	}
-	else {
-		dir
-	}
+	sendEvent(name: "buttonPress", value: "true", isStateChange: true, unit: "")
 }
 
 private List parseMultiSensorMessage(description) {
@@ -142,13 +150,6 @@ private List parseAccelerationMessage(String description) {
 		if (part.startsWith('acceleration:')) {
 			def event = getAccelerationResult(part, description)
 			results << event
-
-			if (event.value == "active") {
-				def direction = motionDirection()
-				log.info "Generating opening/closing status of ${direction}"
-				results << createEvent(name: "status", value: direction)
-			}
-
 		}
 		else if (part.startsWith('rssi:')) {
 			results << getRssiResult(part, description)
@@ -219,32 +220,25 @@ private List parseOrientationMessage(String description) {
 	results << xyz
 
 	// Looks for Z-axis orientation as virtual contact state
-	log.debug "xyz = $xyz"
-	log.debug "value = '$xyz.value'"
-	log.debug "values = ${xyz.value.split(',')}"
 	def a = xyz.value.split(',').collect{it.toInteger()}
-	def absValue = Math.abs(a[2])
-	log.debug "absValue: $absValue"
+	def absValueXY = Math.max(Math.abs(a[0]), Math.abs(a[1]))
+	def absValueZ = Math.abs(a[2])
+	log.debug "absValueXY: $absValueXY, absValueZ: $absValueZ"
 
-	def lastStatus = device.currentState("status")
-	def age = lastStatus ? new Date().time - lastStatus.date.time : 8000
-	log.debug "AGE: $age"
-	if (age >= 8000) {
-		if (absValue > 175) {
-			results << createEvent(name: "contact", value: "open")
-			results << createEvent(name: "status", value: "open")
-			log.debug "STATUS: open"
-		}
-		else if (absValue < 75) {
-			results << createEvent(name: "contact", value: "closed")
-			results << createEvent(name: "status", value: "closed")
-			log.debug "STATUS: closed"
-		}
-		//else if (lastStatus?.value in ["open","closed"]) {
-		//    results << createEvent(name: "status", value: motionDirection())
-		//    log.info "STATUS: ${motionDirection()}"
-		//}
+
+	if (absValueZ > 825 && absValueXY < 175) {
+		results << createEvent(name: "contact", value: "open", unit: "")
+		results << createEvent(name: "status", value: "open", unit: "")
+		results << createEvent(name: "door", value: "open", unit: "")
+		log.debug "STATUS: open"
 	}
+	else if (absValueZ < 75 && absValueXY > 825) {
+		results << createEvent(name: "contact", value: "closed", unit: "")
+		results << createEvent(name: "status", value: "closed", unit: "")
+		results << createEvent(name: "door", value: "closed", unit: "")
+		log.debug "STATUS: closed"
+	}
+
 	results
 }
 
