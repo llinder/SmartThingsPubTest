@@ -34,8 +34,9 @@ preferences {
 }
 
 mappings {
-	path("/receivedToken") 		{ action:[ POST: "receivedToken", 			GET: "receivedToken"] }
-	path("/receiveToken") 		{ action:[ POST: "receiveToken", 			GET: "receiveToken"] }
+	path("/receivedToken"){action: [POST: "receivedToken", GET: "receivedToken"]}
+	path("/receiveToken"){action: [POST: "receiveToken", GET: "receiveToken"]}
+    path("/auth"){action: [GET: "auth"]}
 }
 
 def authPage() {
@@ -49,10 +50,8 @@ def authPage() {
 			createAccessToken()
 			description = "Tap to enter Credentials."
 
-			def redirectUrl = oauthInitUrl()
-
 			return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: true, install:false) {
-				section { href url:redirectUrl, style:"embedded", required:false, title:"Connect to ${getVendorName()}:", description:description }
+				section { href url:buildRedirectUrl("auth"), style:"embedded", required:false, title:"Connect to ${getVendorName()}:", description:description }
 			}
 		} else {
 			description = "Tap 'Next' to proceed"
@@ -76,6 +75,10 @@ To update your Hub, access Location Settings in the Main Menu (tap the gear next
 		}
 
 	}
+}
+
+def auth() {
+	redirect location: oauthInitUrl()
 }
 
 def oauthInitUrl() {
@@ -395,9 +398,10 @@ def initialize() {
 	log.debug "Delete: $delete"
 	delete.each { deleteChildDevice(it.deviceNetworkId) }
 
-	// Do the initial poll and schedule it to run every minute
-	schedule("0 */5 * * * ?", poll)
-    poll()
+	// Do the initial poll
+	poll()
+	// Schedule it to run every 5 minutes
+	runEvery5Minutes("poll")
 }
 
 def uninstalled() {
