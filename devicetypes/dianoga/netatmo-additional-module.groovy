@@ -48,7 +48,7 @@ metadata {
  			state "default", action:"device.poll", icon:"st.secondary.refresh"
  		}
  		main "temperature"
- 		details(["temperature", "humidity", "carbonDioxide"])
+ 		details(["temperature", "humidity", "carbonDioxide", "refresh"])
 	}
 }
 

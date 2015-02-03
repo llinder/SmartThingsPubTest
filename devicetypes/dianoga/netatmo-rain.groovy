@@ -30,7 +30,7 @@ metadata {
  			state "default", action:"device.poll", icon:"st.secondary.refresh"
  		}
  		main "rain"
- 		details(["rain"])
+ 		details(["rain", "refresh"])
 	}
 }
 
