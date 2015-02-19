@@ -402,31 +402,27 @@ private doTakePicture(String uuid, Integer imgWidth)
 		query: [width: imgWidth, uuid: uuid]
 	]
 
-
 	def loginRequired = false
 	def imageBytes
 
-	httpGet(takeParams) { resp ->
+	try {
+	    httpGet(takeParams) { resp ->
+            	if (resp.status == 403) {
+        	  loginRequired = true
+        	 } else if (resp.status == 200 && resp.headers.'Content-Type'.contains("image/jpeg")) {
+        	    imageBytes = resp.data
+        	 } else {
+        	     log.error "unknown takePicture() response: ${resp.status} - ${resp.headers.'Content-Type'}"
+        	 }
+            }
+        } catch (Exception e) {
+            log.error "device is offline"
+            sendNotification("Your dropcam is offline.")
+        }
 
-		if(resp.status == 403)
-		{
-			loginRequired = true
-		}
-		else if (resp.status == 200 && resp.headers.'Content-Type'.contains("image/jpeg"))
-		{
-			imageBytes = resp.data
-		}
-		else
-		{
-			log.error "unknown takePicture() response: ${resp.status} - ${resp.headers.'Content-Type'}"
-		}
+	if(loginRequired) {
+	    throw new Exception("Login Required")
 	}
-
-	if(loginRequired)
-	{
-		throw new Exception("Login Required")
-	}
-
 	return imageBytes
 }
 
