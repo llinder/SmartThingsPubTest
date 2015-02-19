@@ -12,6 +12,8 @@ metadata {
 		capability "Switch"
 		capability "Refresh"
 		capability "Sensor"
+       
+        command "refresh"       
 	}
 
 	simulator {
@@ -25,7 +27,7 @@ metadata {
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 	}
-	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
 		state "level", action:"switch level.setLevel"
 	}
 	valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {
