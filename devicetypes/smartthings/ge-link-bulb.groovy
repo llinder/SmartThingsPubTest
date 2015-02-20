@@ -112,6 +112,7 @@ def refresh() {
 
 def setLevel(value) {
 	log.trace "setLevel($value)"
+	value = value as Integer
 	def cmds = []
 
 	if (value == 0) {
