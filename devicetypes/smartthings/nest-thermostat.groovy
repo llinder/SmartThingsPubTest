@@ -5,10 +5,6 @@
  *
  *  Date: 2015-02-05
  *
- *  To-Do:
- *		- Concent Messege (platform) 
- *		- Change away (once message is done)
- *
  */
 
  // for the UI
@@ -130,139 +126,51 @@ def poll() {
 }
 
 def heatup() {
-    parent.poll()
     log.trace "Heat up"
-    def max
     def heatingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
     def targetvalue = heatingvalue
     def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f") {
+    if (scale == "f")
     	targetvalue = heatingvalue + 1 
-        max = 90
-    } else {  
-    	targetvalue = heatingvalue + 0.5
-        max = 32
-    }         
-   	if(targetvalue <= max) {    
-        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
-        switch (latestThermostatMode) {
-            case "heatcool":
-            	sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, "target_temperature_low_$scale", targetvalue)
-                break;
-            case "heat":
-                sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, "target_temperature_$scale", targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
-                break;        
-        }  
-	} else {
-    	parent.sendNotification("The value is out of the allowed range")
-    }       
-}
-
-def coolup() {
-    parent.poll()
-    log.trace "Cool up"
-    def max
-    def coolingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
-    def targetvalue = coolingvalue
-    def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f") {
-    	targetvalue = coolingvalue + 1 
-        max = 90
-    } else {  
-    	targetvalue = coolingvalue + 0.5
-        max = 32
-    }         
-   	if(targetvalue <= max) {     
-        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
-        switch (latestThermostatMode) {
-            case "heatcool":
-            	sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_high_f', targetvalue)
-                break;
-            case "cool":
-                sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_f', targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
-                break;        
-        }  
-	} else {
-    	parent.sendNotification("The value is out of the allowed range")
-    }
+    else 
+    	targetvalue = heatingvalue + 0.5 
+    setHeatingSetpoint(targetvalue)    
 }
 
 def heatdown() {
-    parent.poll()
     log.trace "Heat down"
-    def min
     def heatingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
     def targetvalue = heatingvalue
     def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f") {
+    if (scale == "f")
     	targetvalue = heatingvalue - 1 
-        min = 50
-    } else {  
-    	targetvalue = heatingvalue - 0.5
-        mim = 9
-    }         
-   	if(targetvalue >= min) {   
-        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
-        switch (latestThermostatMode) {
-            case "heatcool":
-            	sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_low_f', targetvalue)
-                break;
-            case "heat":
-                sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_f', targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
-                break;        
-        }  
-	} else {
-    	parent.sendNotification("The value is out of the allowed range")
-    }        
+    else  
+    	targetvalue = heatingvalue - 0.5 
+	setHeatingSetpoint(targetvalue)     
+}
+
+def coolup() {
+    log.trace "Cool up"
+    def coolingvalue = device.latestState('coolingSetpoint').value as BigDecimal 
+    def targetvalue = coolingvalue
+    def scale= getTemperatureScale().toLowerCase()   
+    if (scale == "f")
+    	targetvalue = coolingvalue + 1 
+    else
+    	targetvalue = coolingvalue + 0.5  
+    setCoolingSetpoint(targetvalue)  
 }
 
 def cooldown() {
-    parent.poll()
     log.trace "Cool down"
-    def min
-    def coolingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
+    def coolingvalue = device.latestState('coolingSetpoint').value as BigDecimal 
     def targetvalue = coolingvalue
     def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f") {
+    if (scale == "f")
     	targetvalue = coolingvalue + 1 
-        min = 50
-    } else {  
-    	targetvalue = coolingvalue + 0.5
-        min = 9
-    }         
-   	if(targetvalue >= min) {     
-        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
-        switch (latestThermostatMode) {
-            case "heatcool":
-            	sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_high_f', targetvalue)
-                break;
-            case "cool":
-                sendEvent(name:"heatingSetpoint", value: targetvalue) 
-                parent.temp(device.deviceNetworkId, 'target_temperature_f', targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
-                break;        
-        }  
-	} else {
-    	parent.sendNotification("The value is out of the allowed range")
-    }     
+    else 
+    	targetvalue = coolingvalue + 0.5  
+    setCoolingSetpoint(targetvalue)      
 }
 
 def mode() {
@@ -279,4 +187,68 @@ def mode() {
     	parent.mode(device.deviceNetworkId,"heat-cool")  
     else if (latestThermostatMode == "heat-cool" || (latestThermostatMode == "heat" && cancoolvalue == "no") || (latestThermostatMode == "cool" && canheatvalue == "no"))
     	parent.mode(device.deviceNetworkId,"off")  
+}
+
+void setHeatingSetpoint(temp) {
+    parent.poll()
+    log.trace "setHeatingSetpoint to $temp"
+    def min
+    def max    
+    def targetvalue = temp as BigDecimal 
+    def scale= getTemperatureScale().toLowerCase()   
+    if (scale == "f") {
+        min = 50
+        max = 90        
+    } else {  
+        min = 9
+        max = 32        
+    }         
+   	if(targetvalue >= min && targetvalue <= max) {     
+        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
+        switch (latestThermostatMode) {
+            case "heatcool":
+                parent.temp(device.deviceNetworkId, "target_temperature_low_${scale}", targetvalue)
+                break;
+            case "heat":
+                parent.temp(device.deviceNetworkId, "target_temperature_${scale}", targetvalue)
+                break;  
+            default:
+                parent.sendNotification("This action is not available in mode $latestThermostatMode")
+                break;        
+        }  
+	} else {
+    	parent.sendNotification("The value is out of the allowed range")
+    }     
+}
+
+void setCoolingSetpoint(temp) {
+    parent.poll()
+    log.trace "setCoolingSetpoint to $temp"
+    def min
+    def max    
+    def targetvalue = temp
+    def scale= getTemperatureScale().toLowerCase()   
+    if (scale == "f") {
+        min = 50
+        max = 90        
+    } else {  
+        min = 9
+        max = 32        
+    }         
+   	if(targetvalue >= min && targetvalue <= max) {     
+        def latestThermostatMode = device.latestState('thermostatMode').stringValue     
+        switch (latestThermostatMode) {
+            case "heatcool":
+                parent.temp(device.deviceNetworkId, "target_temperature_high_${scale}", targetvalue)
+                break;
+            case "cool":
+                parent.temp(device.deviceNetworkId, "target_temperature_${scale}", targetvalue)
+                break;  
+            default:
+                parent.sendNotification("This action is not available in mode $latestThermostatMode")
+                break;        
+        }  
+	} else {
+    	parent.sendNotification("The value is out of the allowed range")
+    }     
 }
