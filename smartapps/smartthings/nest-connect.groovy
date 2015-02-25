@@ -4,6 +4,11 @@
  *  Author: Juan Pablo Risso (juan@smartthings.com)
  *
  *  Date: 2015-02-05
+ *
+ *  To-Do:
+ *		- Concent Messege (platform) 
+ *		- Change away (once message is done)
+ * 
  */
  
 definition(
@@ -411,11 +416,16 @@ def poll() {
                 if (it.value.is_online) {
                 	def scale= getTemperatureScale()
                     def away = nestresponse.structures[it.value.structure_id].away.toString()
-                    // def rushhourstart = nestresponse.structures[it.value.structure_id].peak_period_start_time
-                    // def rushhourends = nestresponse.structures[it.value.structure_id].peak_period_end_time
-					def rushhourstart = "2014-10-31T23:59:59.000Z"
-                    def rushhourends = "2014-10-31T23:59:59.000Z"
                     def rushhour = false
+                    def rushhourstart = nestresponse.structures[it.value.structure_id].peak_period_start_time
+                    def rushhourends = nestresponse.structures[it.value.structure_id].peak_period_end_time
+	                if (rushhourstart) {
+    					def currenttime = now()
+                        rushhourstart = rushhourstart.fromSystemFormat().getTime()
+                        rushhourends = rushhourends.fromSystemFormat().getTime()
+                        if (rushhourstart <= currenttime && rushhourends >= currenttime)
+                    		rushhour = true   
+					}
  					if (scale == "F")
   						childDevice?.sendEvent(name:"temperature", value: it.value.ambient_temperature_f)
                     else
