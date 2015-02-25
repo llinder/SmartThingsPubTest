@@ -126,51 +126,71 @@ def poll() {
 }
 
 def heatup() {
-    log.trace "Heat up"
-    def heatingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
-    def targetvalue = heatingvalue
-    def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f")
-    	targetvalue = heatingvalue + 1 
-    else 
-    	targetvalue = heatingvalue + 0.5 
-    setHeatingSetpoint(targetvalue)    
+    def heatingvalue = device.latestState('heatingSetpoint').value
+    log.trace "Heat up from $heatingvalue"
+    if (heatingvalue) {
+        def targetvalue = heatingvalue as BigDecimal
+        def scale= getTemperatureScale().toLowerCase()   
+        if (scale == "f")
+            targetvalue = targetvalue + 1 
+        else  
+            targetvalue = targetvalue + 0.5 
+        setHeatingSetpoint(targetvalue) 
+    } else {
+    	def latestThermostatMode = device.latestState('thermostatMode').stringValue 
+        parent.sendNotification("This action is not available in mode $latestThermostatMode")
+    }     
 }
 
 def heatdown() {
-    log.trace "Heat down"
-    def heatingvalue = device.latestState('heatingSetpoint').value as BigDecimal 
-    def targetvalue = heatingvalue
-    def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f")
-    	targetvalue = heatingvalue - 1 
-    else  
-    	targetvalue = heatingvalue - 0.5 
-	setHeatingSetpoint(targetvalue)     
+    def heatingvalue = device.latestState('heatingSetpoint').value
+    log.trace "Heat down from $heatingvalue"
+    if (heatingvalue) {
+        def targetvalue = heatingvalue as BigDecimal
+        def scale= getTemperatureScale().toLowerCase()   
+        if (scale == "f")
+            targetvalue = targetvalue - 1 
+        else  
+            targetvalue = targetvalue - 0.5 
+        setHeatingSetpoint(targetvalue) 
+    } else {
+    	def latestThermostatMode = device.latestState('thermostatMode').stringValue 
+        parent.sendNotification("This action is not available in mode $latestThermostatMode")
+    }        
 }
 
 def coolup() {
-    log.trace "Cool up"
-    def coolingvalue = device.latestState('coolingSetpoint').value as BigDecimal 
-    def targetvalue = coolingvalue
-    def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f")
-    	targetvalue = coolingvalue + 1 
-    else
-    	targetvalue = coolingvalue + 0.5  
-    setCoolingSetpoint(targetvalue)  
+    def coolingvalue = device.latestState('coolingSetpoint').value 
+    log.trace "Cool up from $coolingvalue"
+    if (coolingvalue) {
+        def targetvalue = coolingvalue as BigDecimal 
+        def scale= getTemperatureScale().toLowerCase()   
+        if (scale == "f")
+            targetvalue = targetvalue + 1 
+        else
+            targetvalue = targetvalue + 0.5  
+        setCoolingSetpoint(targetvalue)  
+    } else {
+    	def latestThermostatMode = device.latestState('thermostatMode').stringValue 
+        parent.sendNotification("This action is not available in mode $latestThermostatMode")
+    }
 }
 
 def cooldown() {
-    log.trace "Cool down"
-    def coolingvalue = device.latestState('coolingSetpoint').value as BigDecimal 
-    def targetvalue = coolingvalue
-    def scale= getTemperatureScale().toLowerCase()   
-    if (scale == "f")
-    	targetvalue = coolingvalue + 1 
-    else 
-    	targetvalue = coolingvalue + 0.5  
-    setCoolingSetpoint(targetvalue)      
+    def coolingvalue = device.latestState('coolingSetpoint').value 
+    log.trace "Cool down from $coolingvalue"
+    if (coolingvalue) {
+        def targetvalue = coolingvalue as BigDecimal 
+        def scale= getTemperatureScale().toLowerCase()   
+        if (scale == "f")
+            targetvalue = targetvalue - 1 
+        else
+            targetvalue = targetvalue - 0.5  
+        setCoolingSetpoint(targetvalue)  
+    } else {
+    	def latestThermostatMode = device.latestState('thermostatMode').stringValue 
+        parent.sendNotification("This action is not available in mode $latestThermostatMode")
+    }
 }
 
 def mode() {
@@ -194,7 +214,7 @@ void setHeatingSetpoint(temp) {
     log.trace "setHeatingSetpoint to $temp"
     def min
     def max    
-    def targetvalue = temp as BigDecimal 
+    def targetvalue = temp 
     def scale= getTemperatureScale().toLowerCase()   
     if (scale == "f") {
         min = 50
@@ -206,14 +226,11 @@ void setHeatingSetpoint(temp) {
    	if(targetvalue >= min && targetvalue <= max) {     
         def latestThermostatMode = device.latestState('thermostatMode').stringValue     
         switch (latestThermostatMode) {
-            case "heatcool":
+            case "heat-cool":
                 parent.temp(device.deviceNetworkId, "target_temperature_low_${scale}", targetvalue)
                 break;
             case "heat":
                 parent.temp(device.deviceNetworkId, "target_temperature_${scale}", targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
                 break;        
         }  
 	} else {
@@ -226,7 +243,7 @@ void setCoolingSetpoint(temp) {
     log.trace "setCoolingSetpoint to $temp"
     def min
     def max    
-    def targetvalue = temp
+    def targetvalue = temp 
     def scale= getTemperatureScale().toLowerCase()   
     if (scale == "f") {
         min = 50
@@ -238,14 +255,11 @@ void setCoolingSetpoint(temp) {
    	if(targetvalue >= min && targetvalue <= max) {     
         def latestThermostatMode = device.latestState('thermostatMode').stringValue     
         switch (latestThermostatMode) {
-            case "heatcool":
+            case "heat-cool":
                 parent.temp(device.deviceNetworkId, "target_temperature_high_${scale}", targetvalue)
                 break;
             case "cool":
                 parent.temp(device.deviceNetworkId, "target_temperature_${scale}", targetvalue)
-                break;  
-            default:
-                parent.sendNotification("This action is not available in mode $latestThermostatMode")
                 break;        
         }  
 	} else {
