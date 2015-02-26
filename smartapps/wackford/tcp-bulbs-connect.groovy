@@ -277,30 +277,35 @@ def getToken() {
 
 	state.token = ""
 
-	def hashedPassword = generateMD5(password)
+	if (password) {
+		def hashedPassword = generateMD5(password)
 
-	def data = "<gip><version>1</version><email>${username}</email><password>${hashedPassword}</password></gip>"
+		def data = "<gip><version>1</version><email>${username}</email><password>${hashedPassword}</password></gip>"
 
-	def qParams = [
-		cmd: "GWRLogin",
-		data: "${data}",
-		fmt: "json"
-	]
+		def qParams = [
+			cmd : "GWRLogin",
+			data: "${data}",
+			fmt : "json"
+		]
 
-	def cmd = toQueryString(qParams)
+		def cmd = toQueryString(qParams)
 
-	apiPost(cmd) { response ->
-		def status = response.data.gip.rc
+		apiPost(cmd) { response ->
+			def status = response.data.gip.rc
 
-		//sendNotificationEvent("Get token status ${status}")
+			//sendNotificationEvent("Get token status ${status}")
 
-		if ( status != "200" ) {//success code = 200
-			def errorText = response.data.gip.error
-			debugOut "Error logging into TCP Gateway. Error = ${errorText}"
-			state.token = "error"
-		} else {
-			state.token = response.data.gip.token
+			if (status != "200") {//success code = 200
+				def errorText = response.data.gip.error
+				debugOut "Error logging into TCP Gateway. Error = ${errorText}"
+				state.token = "error"
+			} else {
+				state.token = response.data.gip.token
+			}
 		}
+	} else {
+		log.warn "Unable to log into TCP Gateway. Error = Password is null"
+		state.token = "error"
 	}
 }
 
