@@ -258,14 +258,16 @@ def buildRedirectUrl(page) {
 Map discoverDevices() {
     log.trace "Discovering devices"
     setup()
-	def devices = state.nestdevices.devices.thermostats
-	def map = [:]
-	devices.each {
-		def value = "${it.value.name_long}"
-		def key = "${it.value.device_id}"
-		map["${key}"] = value
-	}
-	map
+    if (state.nestdevices.devices.thermostats) {
+        def devices = state.nestdevices.devices.thermostats
+        def map = [:]
+        devices.each {
+            def value = "${it.value.name_long}"
+            def key = "${it.value.device_id}"
+            map["${key}"] = value
+        }
+        map
+    }    
 }
 
 def installed() {
