@@ -126,7 +126,7 @@ def getDataForChild(child, startDate, endDate) {
 	def wattvisionURL = wattvisionURL(child.deviceNetworkId, startDate, endDate)
 	if (wattvisionURL) {
 		httpGet(uri: wattvisionURL) { response ->
-			def json = new org.codehaus.groovy.grails.web.json.JSONObject(response.data.toString())
+			def json = new org.json.JSONObject(response.data.toString())
 			child.addWattvisionData(json)
 			return "success"
 		}
@@ -337,7 +337,7 @@ private getSensorJSON(id, key) {
 
 	httpGet(uri: sensorUrl) { response ->
 
-		def json = new org.codehaus.groovy.grails.web.json.JSONObject(response.data)
+		def json = new org.json.JSONObject(response.data)
 
 		state.sensors = json
 

@@ -230,7 +230,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${singleJsonString.trim()}<"
 
-			def cam = new org.codehaus.groovy.grails.web.json.JSONObject(singleJsonString.trim())
+			def cam = new org.json.JSONObject(singleJsonString.trim())
 
 			log.debug "list: returning 1 Dropcam "
 
@@ -245,7 +245,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${singleJsonString.trim()}<"
 
-			def cam = new org.codehaus.groovy.grails.web.json.JSONObject(singleJsonString.trim())
+			def cam = new org.json.JSONObject(singleJsonString.trim())
 
 			log.debug "list: returning 1 Dropcam "
 
@@ -260,7 +260,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${listJsonString.trim()}<"
 
-			def a = new org.codehaus.groovy.grails.web.json.JSONArray(listJsonString.trim())
+			def a = new org.json.JSONArray(listJsonString.trim())
 
 			log.debug "list: returning ${a.size()} Dropcams "
 
