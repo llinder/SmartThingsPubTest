@@ -34,7 +34,7 @@
  * @return none
  */
  metadata {
-	definition (name: "Fibaro Door/Window Sensor", namespace: "smartthings", author: "Todd Wackford") {      
+	definition (name: "Fibaro Door/Window Sensor", namespace: "smartthings", author: "SmartThings") {      
 		//capability 	"Temperature Measurement"  //UNCOMMENT ME IF TEMP INSTALLED      
 		capability 	"Contact Sensor"
 		capability 	"Sensor"
