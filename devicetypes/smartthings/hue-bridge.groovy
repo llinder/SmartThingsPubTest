@@ -64,8 +64,8 @@ def parse(description) {
 						log.warn "NOT PROCESSED: $msg.body"
 					}
 					else {
-						log.debug "HUE BRIDGE, GENERATING BULB LIST EVENT"
-						sendEvent(name: "bulbList", value: device.hub.id, isStateChange: true, data: bulbs)
+						log.debug "HUE BRIDGE, GENERATING BULB LIST EVENT: $bulbs"
+                        sendEvent(name: "bulbList", value: device.hub.id, isStateChange: true, data: bulbs, displayed: false)
 					}
 				}
 				else if (contentType?.contains("xml")) {

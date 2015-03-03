@@ -10,25 +10,24 @@ metadata {
 		capability "Switch Level"
 		capability "Actuator"
 		capability "Switch"
-		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
+       
+        command "refresh"       
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 
-	standardTile("switch", "device.switch", width: 1, height: 1, canChangeIcon: true) {
-		state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821", nextState:"turningOff"
-		state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
-		state "turningOn", label:'${name}', icon:"st.switches.switch.on", backgroundColor:"#79b821"
-		state "turningOff", label:'${name}', icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+	standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+		state "on", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821"
+		state "off", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff"
 	}
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 	}
-	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
 		state "level", action:"switch level.setLevel"
 	}
 	valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {

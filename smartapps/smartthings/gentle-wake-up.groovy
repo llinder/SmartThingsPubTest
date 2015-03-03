@@ -33,7 +33,7 @@ def rootPage() {
 	dynamicPage(name: "rootPage", title: "", install: true, uninstall: true) {
 
 		section {
-			input(name: "dimmers", type: "capability.switchLevel", title: "Dimmers", description: null, multiple: true, required: true, refreshAfterSelection: true)
+			input(name: "dimmers", type: "capability.switchLevel", title: "Dimmers", description: null, multiple: true, required: true, submitOnChange: true)
 		}
 
 		if (dimmers) {
@@ -84,31 +84,31 @@ def numbersPage() {
 }
 
 def defaultStart() {
-	if (!endLevel && direction && direction == "Down") {
+	if (usesOldSettings() && direction && direction == "Down") {
 		return 99
 	}
 	return 0
 }
 
 def defaultEnd() {
-	if (!endLevel && direction && direction == "Down") {
+	if (usesOldSettings() && direction && direction == "Down") {
 		return 0
 	}
 	return 99
 }
 
 def startLevelLabel() {
-	if (!endLevel) { // using old settings
+	if (usesOldSettings()) { // using old settings
 		if (direction && direction == "Down") { // 99 -> 1
 			return "99%"
 		}
 		return "0%"
 	}
-	return startLevel ? "${startLevel}%" : "Current Level"
+	return hasStartLevel() ? "${startLevel}%" : "Current Level"
 }
 
 def endLevelLabel() {
-	if (!endLevel) { // using old settings
+	if (usesOldSettings()) {
 		if (direction && direction == "Down") { // 99 -> 1
 			return "0%"
 		}
@@ -125,7 +125,7 @@ def schedulingPage() {
 		}
 
 		section {
-			input(name: "modeStart", title: "Start when entering this mode", type: "mode", required: false, mutliple: false, refreshAfterSelection: true)
+			input(name: "modeStart", title: "Start when entering this mode", type: "mode", required: false, mutliple: false, submitOnChange: true)
 			if (modeStart) {
 				input(name: "modeStop", title: "Stop when leaving '${modeStart}' mode", type: "bool", required: false)
 			}
@@ -142,7 +142,7 @@ def completionPage() {
 	dynamicPage(name: "completionPage", title: "Completion Rules") {
 
 		section("Switches") {
-			input(name: "completionSwitches", type: "capability.switch", title: "Set these switches", description: null, required: false, multiple: true, refreshAfterSelection: true)
+			input(name: "completionSwitches", type: "capability.switch", title: "Set these switches", description: null, required: false, multiple: true, submitOnChange: true)
 			if (completionSwitches || androidClient()) {
 				input(name: "completionSwitchesState", type: "enum", title: "To", description: null, required: false, multiple: false, options: ["on", "off"], style: "segmented", defaultValue: "on")
 				input(name: "completionSwitchesLevel", type: "number", title: "Optionally, Set Dimmer Levels To", description: null, required: false, multiple: false, range: "(0..99)")
@@ -393,7 +393,7 @@ private handleCompletionSwitches() {
 private handleCompletionMessaging() {
 	if (completionMessage) {
 		if (location.contactBookEnabled) {
-			sendNotification(completionMessage, recipients)
+			sendNotificationToContacts(completionMessage, recipients)
 		} else {
 			if (completionPhoneNumber) {
 				sendSms(completionPhoneNumber, completionMessage)
@@ -449,9 +449,9 @@ def resumePlaying() {
 def setLevelsInState() {
 	def startLevels = [:]
 	dimmers.each { dimmer ->
-		if (!endLevel) { // old settings
+		if (usesOldSettings()) {
 			startLevels[dimmer.id] = defaultStart()
-		} else if (startLevel) {
+		} else if (hasStartLevel()) {
 			startLevels[dimmer.id] = startLevel
 		} else {
 			def dimmerIsOff = dimmer.currentValue("switch") == "off"
@@ -499,15 +499,13 @@ int totalRunTimeMillis() {
 }
 
 int dynamicEndLevel() {
-	if (endLevel) {
-		return endLevel as int
+	if (usesOldSettings()) {
+		if (direction && direction == "Down") {
+			return 0
+		}
+		return 99
 	}
-
-	// old settings
-	if (direction == "Down") {
-		return 0
-	}
-	return 99
+	return endLevel as int
 }
 
 def getHue(dimmer, level) {
@@ -809,4 +807,16 @@ def rgbToHex(red, green, blue) {
 	}
 
 	return rgbToHex(red, green, blue)
+}
+
+def usesOldSettings() {
+	!hasEndLevel()
+}
+
+def hasStartLevel() {
+	return (startLevel != null && startLevel != "")
+}
+
+def hasEndLevel() {
+	return (endLevel != null && endLevel != "")
 }

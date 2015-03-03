@@ -11,22 +11,20 @@ metadata {
 		capability "Actuator"
 		capability "Color Control"
 		capability "Switch"
-		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
 
 		command "setAdjustedColor"
+        command "refresh"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 
-	standardTile("switch", "device.switch", width: 1, height: 1, canChangeIcon: true) {
-		state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821", nextState:"turningOff"
-		state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
-		state "turningOn", label:'${name}', icon:"st.switches.switch.on", backgroundColor:"#79b821"
-		state "turningOff", label:'${name}', icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+	standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+		state "on", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821"
+		state "off", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff"
 	}
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -34,7 +32,7 @@ metadata {
 	controlTile("rgbSelector", "device.color", "color", height: 3, width: 3, inactiveLabel: false) {
 		state "color", action:"setAdjustedColor"
 	}
-	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
 		state "level", action:"switch level.setLevel"
 	}
 	valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {
@@ -62,19 +60,15 @@ metadata {
 def parse(description) {
 	log.debug "parse() - $description"
 	def results = []
-
 	def map = description
 	if (description instanceof String)  {
 		log.debug "Hue Bulb stringToMap - ${map}"
 		map = stringToMap(description)
 	}
-
 	if (map?.name && map?.value) {
 		results << createEvent(name: "${map?.name}", value: "${map?.value}")
 	}
-
 	results
-
 }
 
 // handle commands
@@ -88,13 +82,9 @@ def off() {
 	sendEvent(name: "switch", value: "off")
 }
 
-def poll() {
-	parent.poll(this)
-}
-
 def nextLevel() {
 	def level = device.latestValue("level") as Integer ?: 0
-	if (level < 100) {
+	if (level <= 100) {
 		level = Math.min(25 * (Math.round(level / 25) + 1), 100) as Integer
 	}
 	else {
@@ -122,24 +112,21 @@ def setHue(percent) {
 }
 
 def setColor(value) {
-	log.debug "setColor: ${value}"
+	log.debug "setColor: ${value}, $this"
 	parent.setColor(this, value)
-	sendEvent(name: "hue", value: value.hue)
-	sendEvent(name: "saturation", value: value.saturation)
-	sendEvent(name: "color", value: value.hex)
-	if (value.level) {
-		sendEvent(name: "level", value: value.level)
-	}
-	if (value.switch) {
-		sendEvent(name: "switch", value: value.switch)
-	}
+	if (value.hue) { sendEvent(name: "hue", value: value.hue)}
+	if (value.saturation) { sendEvent(name: "saturation", value: value.saturation)}
+	if (value.hex) { sendEvent(name: "color", value: value.hex)}
+	if (value.level) { sendEvent(name: "level", value: value.level)}
+	if (value.switch) { sendEvent(name: "switch", value: value.switch)}
 }
 
 def setAdjustedColor(value) {
 	log.debug "setAdjustedColor: ${value}"
 	def adjusted = value + [:]
 	adjusted.hue = adjustOutgoingHue(value.hue)
-	adjusted.level = null // needed because color picker always sends 100
+    // Needed because color picker always sends 100
+	adjusted.level = null 
 	setColor(adjusted)
 }
 
@@ -149,7 +136,7 @@ def save() {
 
 def refresh() {
 	log.debug "Executing 'refresh'"
-	parent.poll(this)
+	parent.poll()
 }
 
 def adjustOutgoingHue(percent) {
