@@ -521,7 +521,7 @@ def poll() {
 		switch(detail.type) {
 			case 'NAMain':
 				log.debug "Updating NAMain $data"
-				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as Integer, unit: getTemperatureScale())
+				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'])
 				child?.sendEvent(name: 'humidity', value: data['Humidity'])
 				child?.sendEvent(name: 'pressure', value: data['Pressure'])
@@ -529,7 +529,7 @@ def poll() {
 				break;
 			case 'NAModule1':
 				log.debug "Updating NAModule1 $data"
-				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as Integer, unit: getTemperatureScale())
+				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'humidity', value: data['Humidity'])
 				break;
 			case 'NAModule3':
@@ -538,7 +538,7 @@ def poll() {
 				break;
 			case 'NAModule4':
 				log.debug "Updating NAModule4 $data"
-				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as Integer)
+				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float)
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'])
 				child?.sendEvent(name: 'humidity', value: data['Humidity'])
 				break;
