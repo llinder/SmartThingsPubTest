@@ -243,6 +243,10 @@ def initialize() {
     runEvery5Minutes("doDeviceSync")
 }
 
+def uninstalled() { 
+	unsubscribe() 
+}
+
 // Handles events to add new bulbs
 def bulbListHandler(evt) {
 	def bulbs = [:]
