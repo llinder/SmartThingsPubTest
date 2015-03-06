@@ -122,16 +122,14 @@ def setColor(value) {
 }
 
 def setAdjustedColor(value) {
-	log.debug "setAdjustedColor: ${value}"
-	def adjusted = value + [:]
-	adjusted.hue = adjustOutgoingHue(value.hue)
-    // Needed because color picker always sends 100
-	adjusted.level = null 
-	setColor(adjusted)
-}
-
-def save() {
-	log.debug "Executing 'save'"
+	if (value) {
+        log.debug "setAdjustedColor: ${value}"
+        def adjusted = value + [:]
+        adjusted.hue = adjustOutgoingHue(value.hue)
+        // Needed because color picker always sends 100
+        adjusted.level = null 
+        setColor(adjusted)
+    }
 }
 
 def refresh() {
