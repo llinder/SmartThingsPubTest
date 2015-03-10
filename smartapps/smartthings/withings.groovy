@@ -144,10 +144,10 @@ String hmac(String dataString, String consumerSecret, String tokenSecret="") thr
 	String result
 
 	def key = [consumerSecret, tokenSecret].join('&')
-	
+
 	// get an hmac_sha1 key from the raw key bytes
 	def signingKey = new javax.crypto.spec.SecretKeySpec(key.getBytes(), "HmacSHA1")
-	
+
 	// get an hmac_sha1 Mac instance and initialize with the signing key
 	def mac = javax.crypto.Mac.getInstance("HmacSHA1")
 	mac.init(signingKey)
@@ -361,7 +361,7 @@ String get(measurementRestAction) {
 }
 
 def parse(Map response) {
-	def json = new org.codehaus.groovy.grails.web.json.JSONObject(response.data)
+	def json = new org.json.JSONObject(response.data)
 	parseJson(json)
 }
 

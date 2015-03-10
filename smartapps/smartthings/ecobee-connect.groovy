@@ -659,7 +659,7 @@ def getChildDeviceIdsString()
 
 def toJson(Map m)
 {
-	return new org.codehaus.groovy.grails.web.json.JSONObject(m).toString()
+	return new org.json.JSONObject(m).toString()
 }
 
 def toQueryString(Map m)

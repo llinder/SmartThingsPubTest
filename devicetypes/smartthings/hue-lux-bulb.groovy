@@ -53,9 +53,7 @@ def parse(description) {
 	if (map?.name && map?.value) {
 		results << createEvent(name: "${map?.name}", value: "${map?.value}")
 	}
-
 	results
-
 }
 
 // handle commands
@@ -69,21 +67,13 @@ def off() {
 	sendEvent(name: "switch", value: "off")
 }
 
-def poll() {
-	parent.poll(this)
-}
-
 def setLevel(percent) {
 	log.debug "Executing 'setLevel'"
 	parent.setLevel(this, percent)
 	sendEvent(name: "level", value: percent)
 }
 
-def save() {
-	log.debug "Executing 'save'"
-}
-
 def refresh() {
 	log.debug "Executing 'refresh'"
-	parent.poll(this)
+	parent.poll()
 }
