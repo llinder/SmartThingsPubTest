@@ -111,7 +111,7 @@ private noRecentContact()
 
 private getSinceTime() {
 	if (time0) {
-		return timeToday(time0)
+		return timeToday(time0, location?.timeZone)
 	}
 	else {
 		return new Date(now() - 21600000)
