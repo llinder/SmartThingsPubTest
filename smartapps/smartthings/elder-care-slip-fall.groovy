@@ -59,8 +59,8 @@ def initialize() {
 }
 
 def bedroomActive(evt) {
-	def start = timeToday(startTime)
-    def stop = timeToday(stopTime)
+	def start = timeToday(startTime, location?.timeZone)
+    def stop = timeToday(stopTime, location?.timeZone)
     def now = new Date()
     log.debug "bedroomActive, status: $state.ststus, start: $start, stop: $stop, now: $now"
     if (state.status == "waiting") {
