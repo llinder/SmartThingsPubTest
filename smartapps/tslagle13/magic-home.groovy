@@ -299,8 +299,8 @@
     	def result = true
     	if (starting && ending) {
     		def currTime = now()
-    		def start = timeToday(starting).time
-    		def stop = timeToday(ending).time
+    		def start = timeToday(starting, location?.timeZone).time
+    		def stop = timeToday(ending, location?.timeZone).time
     		result = start < stop ? currTime >= start && currTime <= stop : currTime <= stop || currTime >= start
     	}
     	log.trace "timeOk = $result"
