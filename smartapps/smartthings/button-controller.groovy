@@ -20,7 +20,7 @@ preferences {
 	page(name: "configureButton2")
 	page(name: "configureButton3")
 	page(name: "configureButton4")
-	
+
 	page(name: "timeIntervalInput", title: "Only during a certain time") {
 		section {
 			input "starting", "time", title: "Starting", required: false
@@ -34,9 +34,9 @@ def selectButton() {
 		section {
 			input "buttonDevice", "capability.button", title: "Button", multiple: false, required: true
 		}
-		
+
 		section(title: "More options", hidden: hideOptionsSection(), hideable: true) {
-			
+
 			def timeLabel = timeIntervalLabel()
 
 			href "timeIntervalInput", title: "Only during a certain time", description: timeLabel ?: "Tap to set", state: timeLabel ? "complete" : null
@@ -148,10 +148,10 @@ def buttonEvent(evt){
 		def value = evt.value
 		log.debug "buttonEvent: $evt.name = $evt.value ($evt.data)"
 		log.debug "button: $buttonNumber, value: $value"
-	
+
 		def recentEvents = buttonDevice.eventsSince(new Date(now() - 3000)).findAll{it.value == evt.value && it.data == evt.data}
 		log.debug "Found ${recentEvents.size()?:0} events in past 3 seconds"
-	
+
 		if(recentEvents.size <= 1){
 			switch(buttonNumber) {
 				case ~/.*1.*/:
@@ -194,7 +194,7 @@ def executeHandlers(buttonNumber, value) {
 	def textMessage = findMsg('textMessage', buttonNumber)
 
 	def notifications = find('notifications', buttonNumber, value)
-	if (notifications.toBoolean()) sendPush(textMessage ?: "Button $buttonNumber was pressed" )
+	if (notifications?.toBoolean()) sendPush(textMessage ?: "Button $buttonNumber was pressed" )
 
 	def phone = find('phone', buttonNumber, value)
 	if (phone != null) sendSms(phone, textMessage ?:"Button $buttonNumber was pressed")
