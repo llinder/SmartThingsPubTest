@@ -322,7 +322,7 @@ def triggerInputs() {
 				case "Motion":
 					input "motionSensors", "capability.motionSensor", title: "Motion sensors", multiple: true, required: false
 					input "motionState", "enum", title: "Take action when", options: [["active":"When motion starts"], ["inactive":"When motion stops"]], defaultValue: "active", submitOnChange: true
-					if (motionState == "active") {
+					if (motionState != "inactive") {
 						input "motionStops", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} after motion stops", defaultValue: "false", required: false, submitOnChange: true
 						if (motionStops) {
 							input "motionStopsTime", "number", title: "After this number of minutes", required: false
@@ -332,7 +332,7 @@ def triggerInputs() {
 				case "Open/Close":
 					input "contactSensors", "capability.contactSensor", title: "Open/close sensors", multiple: true, required: false
 					input "contactState", title: "Take action when", "enum", options: [["open":"When opened"], ["closed":"When closed"]], defaultValue: "open", submitOnChange: true
-					if (contactState == "open") {
+					if (contactState != "closed") {
 						input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when closed", defaultValue: "false", required: false, submitOnChange: true
 						if (contactCloses) {
 							input "contactClosesTime", "number", title: "After this number of minutes", required: false
@@ -374,9 +374,14 @@ def triggerInputs() {
 
 def otherInputs() {
 	if (settings.trigger) {
+    	def timeLabel = timeIntervalLabel()
 		section(title: "More options", hidden: hideOptionsSection(), hideable: true) {
-			href "timeIntervalInput", title: "Only during a certain time", description: timeLabel ?: "Tap to set", state: timeLabel ? "complete" : "incomplete"
-
+        	def timeBasedTrigger = trigger in ["At Sunrise", "At Sunset", "At a Specific Time"]
+            log.trace "timeBasedTrigger: $timeBasedTrigger"
+        	if (!timeBasedTrigger) {
+				href "timeIntervalInput", title: "Only during a certain time", description: timeLabel ?: "Tap to set", state: timeLabel ? "complete" : "incomplete"
+			}
+            
 			input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -612,3 +617,9 @@ private hhmm(time, fmt = "h:mm a")
 	f.setTimeZone(location.timeZone ?: timeZone(time))
 	f.format(t)
 }
+
+private timeIntervalLabel()
+{
+	(starting && ending) ? hhmm(starting) + "-" + hhmm(ending, "h:mm a z") : ""
+}
+

@@ -51,15 +51,12 @@ def initialize() {
 }
 
 cards {
-	if (state?.configured) {
-		card("Recently") {
-			tiles {
-				eventTile {}
-			}
-		}
-	}
-
 	card(name: "Lighting Wizard", type: "html", action: "home") {}
+    card("Recently") {
+        tiles {
+            eventTile {}
+        }
+    }
 }
 
 mappings {
