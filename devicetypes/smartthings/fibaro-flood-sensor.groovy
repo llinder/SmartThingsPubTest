@@ -34,7 +34,7 @@
  * @return none
  */
 metadata {
-	definition (name: "Fibaro Flood Sensor", namespace: "smartthings", author: "Todd Wackford") {
+	definition (name: "Fibaro Flood Sensor", namespace: "smartthings", author: "SmartThings") {
 		capability "Water Sensor"
 		capability "Temperature Measurement"
 		capability "Configuration"
