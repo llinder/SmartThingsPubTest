@@ -374,12 +374,10 @@ def triggerInputs() {
 				case "Open/Close":
 					input "contactSensors", "capability.contactSensor", title: "Open/close sensors", multiple: true, required: false
 					input "contactState", title: "$actionLabel when", "enum", options: [["open":"When opened"], ["closed":"When closed"]], defaultValue: "open", submitOnChange: true
-					if (contactState) {
-						input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when ${contactState == 'closed' ? 'opened' : 'closed'}", defaultValue: "false", required: false, submitOnChange: true
-						if (contactCloses) {
-							input "contactClosesTime", "number", title: "After this number of minutes", required: false
-						}
-					}
+                    input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when ${contactState == 'closed' ? 'opened' : 'closed'}", defaultValue: "false", required: false, submitOnChange: true
+                    if (contactCloses) {
+                        input "contactClosesTime", "number", title: "After this number of minutes", required: false
+                    }
 					break
 				case "Presence":
 					input "presenceSensors", "capability.presenceSensor", title: "Presence sensors", multiple: true, required: false
@@ -404,7 +402,7 @@ def triggerInputs() {
 					break
                 case "At a Specific Time":
 					input "scheduledTime", "time", title: "$actionLabel at", required: false
-                    input "scheduledTimeFollowup", "time", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunset", defaultValue: "false", required: false, submitOnChange: true
+                    input "scheduledTimeFollowup", "time", title: "Also turn ${action == "off" ? 'on' : 'off'} at", defaultValue: "false", required: false, submitOnChange: true
 					break
 				case "When Mode Changes":
 					input "triggerModes", "mode", title: "$actionLabel when mode changes to", multiple: true, required: false
@@ -462,6 +460,9 @@ private String defaultLabel() {
 			break
 		case "At a Specific Time":
 			triggerLabel = "at ${hhmm(scheduledTime)}"
+            if (scheduledTimeFollowup) {
+            	triggerLabel += " and ${action == 'off' ? 'on' : 'off'} at ${hhmm(scheduledTimeFollowup)}"
+            }
 			break
 		case "When Mode Changes":
 			triggerLabel = "when mode changes to ${triggerModes.join(',','or')}"
@@ -469,10 +470,10 @@ private String defaultLabel() {
 	}
 
 	if (action == "color") {
-		"Set color of $lightsLabel $triggerLabel"
+		"Turn on and set color of $lightsLabel $triggerLabel"
 	}
 	else if (action == "level") {
-		"Set level of $lightsLabel $triggerLabel"
+		"Turn on and set level of $lightsLabel $triggerLabel"
 	}
 	else {
 		if (trigger == "Button" && buttonToggle) {
@@ -547,46 +548,46 @@ private setColor() {
 
 private dataFor(evt) {
 	def icon = null
-	def color = "#dddddd"
+	def color = action == "off" ? "#dddddd" : "#79b821"
 		switch (evt.name) {
 			case "contact":
 				icon = "st.contact.contact.$evt.value"
-				color = evt.value == "open" ? "#ffa81e" : "#79b821"
+				//color = evt.value == "open" ? "#ffa81e" : "#79b821"
 				break
 			case "motion":
 				icon = "st.motion.motion.$evt.value"
-				color = evt.value == "active" ? "#53a7c0" : "#dddddd"
+				//color = evt.value == "active" ? "#53a7c0" : "#dddddd"
 				break
 			case "presence":
 				icon = "st.presence.tile.presence-default"
-				color = evt.value == "present" ? "#53a7c0" : "#dddddd"
+				//color = evt.value == "present" ? "#53a7c0" : "#dddddd"
 				break
 			case "lock":
 				icon = "st.locks.lock.$evt.value"
-				color = evt.value == "locked" ? "#79b821" : "#dddddd"
+				//color = evt.value == "locked" ? "#79b821" : "#dddddd"
 				break
 			case "water":
 				icon = "st.alarm.water.$evt.value"
-				color = evt.value == "wet" ? "#53a7c0" : "#dddddd"
+				//color = evt.value == "wet" ? "#53a7c0" : "#dddddd"
 				break
 			case "smoke":
 				icon = "st.alarm.smoke.$evt.value"
-				color = evt.value == "clear" ? "#dddddd" : "#e86d13"
+				//color = evt.value == "clear" ? "#dddddd" : "#e86d13"
 				break
 			case "sunrise":
 				icon = "st.Weather.weather14"
-				color = "#ffe71e"
+				//color = "#ffe71e"
 				break
 			case "sunset":
 				icon = "st.Weather.weather4"
-				color = "#ff631e"
+				//color = "#ff631e"
 				break
 			case "mode":
 				icon = "st.nest.nest-home"
 				break
 			case "switch":
 				icon = "st.Home.home30"
-				color = evt.value == "on" ? "#79b821" : "#dddddd"
+				//color = evt.value == "on" ? "#79b821" : "#dddddd"
 				break
 			case "button":
 				icon = "st.unknown.zwave.remote-controller"
@@ -605,8 +606,8 @@ private updateRecently(evt) {
         value = evt?.linkText
 	}
 	else {
-		data = [icon: "st.Office.office6", colo: "#dddddd"]
-		descriptionText = "$app.label triggered at a set time"
+		data = [icon: "st.Office.office6", backgroundColor: action == "off" ? "#dddddd" : "#79b821"]
+		descriptionText = "$app.label triggered on schedule"
         value = ""
 	}
 
@@ -626,38 +627,41 @@ private updateRecentlyFollowup(evt) {
 	def value
     def data
     def actionText = action == "off" ? 'on' : "off"
+    def color = action == "off" ? "#79b821" : "#dddddd"
+    
 	if (evt) {
     	data = dataFor(evt)
+        data.backgroundColor = color
         descriptionText = "$app.label turned $actionText ${followupPhrase(evt)}"
         value = evt?.linkText
 	}
     else if (trigger == "Motion") {
     	if (motionState == "active") {
-            data = [icon: "st.motion.motion.inactive", backgroundColor: "#dddddd"]
+            data = [icon: "st.motion.motion.inactive", backgroundColor: color]
             descriptionText = "$app.label turned $actionText when motion stopped"
             value = "inactive"
         }
         else {
-            data = [icon: "st.motion.motion.active", backgroundColor: "#53a7c0"]
+            data = [icon: "st.motion.motion.active", backgroundColor: color]
             descriptionText = "$app.label turned $actionText when motion detected"
             value = "active"
         }
     }
     else if (trigger == "Open/Close") {
     	if (contactState == "open") {
-            data = [icon: "st.contact.contact.closed", backgroundColor: "#79b821"]
+            data = [icon: "st.contact.contact.closed", backgroundColor: color]
             descriptionText = "$app.label turned $actionText when closed"
             value = "closed"
         }
         else {
-            data = [icon: "st.contact.contact.open", backgroundColor: "#ffa81e"]
+            data = [icon: "st.contact.contact.open", backgroundColor: color]
             descriptionText = "$app.label turned $actionText when opened"
             value = "open"
         }
     }
 	else {
-		data = [icon: "st.Office.office6", backgroundColor: "#dddddd"]
-		descriptionText = "$app.label turned $actionText at a set time"
+		data = [icon: "st.Office.office6", backgroundColor: color]
+		descriptionText = "$app.label turned $actionText on schedule"
         value = ""
 	}
 
