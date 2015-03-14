@@ -64,7 +64,7 @@ def initialize() {
 		case "Open/Close":
 			subscribe(contactSensors, "contact.$contactState", triggerHandler)
 			if (contactCloses) {
-				subscribe(contactSensors, "contact.closed", stopHandler)
+				subscribe(contactSensors, "contact.${contactState == 'closed' ? 'open' : 'closed'}", stopHandler)
 			}
 			break
 		case "Presence":
@@ -86,12 +86,21 @@ def initialize() {
 			break
 		case "At Sunrise":
 			subscribe(location, "sunrise", triggerHandler)
+            if (sunsetFollowup) {
+            	subscribe(location, "sunset", stopHandler)
+            }
 			break
 		case "At Sunset":
 			subscribe(location, "sunset", triggerHandler)
-			break
+            if (sunriseFollowup) {
+            	subscribe(location, "sunrise", stopHandler)
+            }
+            break
 		case "At a Specific Time":
 			schedule(scheduledTime, triggerHandler)
+            if (scheduledTimeFollowup) {
+            	schedule(scheduledTimeFollowup, stopHandler)
+            }
 			break
 		case "When Mode Changes":
 			subscribe(location, modeChangeHandler)
@@ -103,11 +112,29 @@ def initialize() {
 
 }
 
+// PRIMARY EVENT HANDLERS
+//
+// Generic handler for primary events
+def triggerHandler(evt = [:]) {
+	log.trace "triggerHandler($evt.name: $evt.value)"
+	if (allOk) {
+		startAction(evt)
+	}
+
+	if (motionStopsTime || contactClosesTime || powerAllowanceTime) {
+		unschedule("stopAction", [cassandra:true])
+	}
+}
+
 def modeChangeHandler(evt) {
 	log.trace "modeChangeHandler($evt.name: $evt.value)"
-	if (allOk && evt.value in triggerModes) {
-		startAction()
-        updateRecently(evt)
+	if (allOk) {
+        if (evt.value in triggerModes) {
+            startAction(evt)
+        }
+        else if (modeChangeFollowup && !evt.value in triggerModes) {
+        	stopAction(evt)
+        }
 	}
 }
 
@@ -131,29 +158,16 @@ def buttonHandler(evt)
         	if (evt.value == buttonAction) {
                 if (state.pushed) {
                     log.trace "stopAction()"
-                    stopAction()
+                    stopAction(evt)
                     state.pushed = false
                 }
                 else {
                     log.trace "startAction()"
-                    startAction()
-                    updateRecently(evt)
+                    startAction(evt)
                     state.pushed = true
                 }
             }
         }
-	}
-}
-
-def triggerHandler(evt = [:]) {
-	log.trace "triggerHandler($evt.name: $evt.value)"
-	if (allOk) {
-		startAction()
-		updateRecently(evt)
-	}
-
-	if (motionStopsTime || contactClosesTime || powerAllowanceTime) {
-		unschedule("stopAction", [cassandra:true])
 	}
 }
 
@@ -165,7 +179,28 @@ def departureHandler(evt) {
 			log.debug "$stillPresent.displayName is still present"
 		}
 		else {
-			startAction()
+			startAction(evt)
+		}
+	}
+}
+
+
+// FOLLOWUP EVENT HANDLERS
+//
+// Generic handler for follow-up events
+def stopHandler(evt = [:]) {
+	log.trace "stopHandler($evt.name: $evt.value)"
+	if (allOk) {
+		if (trigger == "Open/Close") {
+			if (contactClosesTime) {
+				runIn(contactClosesTime * 60, stopAction, [cassandra: true])
+			}
+			else {
+				stopAction(evt)
+			}
+		}
+		else {
+			stopAction(evt)
 		}
 	}
 }
@@ -182,30 +217,17 @@ def motionStopHandler(evt) {
 				runIn(motionStopsTime * 60, stopAction, [cassandra: true])
 			}
 			else {
-				stopAction()
+				stopAction(evt)
 			}
 		}
 	}
 }
 
-def stopHandler(evt) {
-	log.trace "stopHandler($evt.name: $evt.value)"
-	if (allOk) {
-		if (trigger == "Open/Close") {
-			if (contactClosesTime) {
-				runIn(contactClosesTime * 60, stopAction, [cassandra: true])
-			}
-			else {
-				stopAction()
-			}
-		}
-		else {
-			stopAction()
-		}
-	}
-}
 
-def startAction() {
+// ACTION DISPATCHERS
+//
+// Action dispatcher for primary events
+def startAction(evt = [:]) {
 	switch(action) {
 		case "on":
 			log.debug "on()"
@@ -230,9 +252,11 @@ def startAction() {
 			setColor()
 			break
 	}
+    updateRecently(evt)
 }
 
-def stopAction() {
+// Action dispatcher for followup events
+def stopAction(evt = [:]) {
 	log.trace "stopAction()"
 	switch(action) {
 		case "on":
@@ -246,8 +270,12 @@ def stopAction() {
 			lights.on()
 			break
 	}
+    updateRecentlyFollowup(evt)
 }
 
+
+// DYNAMIC PREFERENCE PAGES
+//
 def mainPage() {
 	dynamicPage(name: "mainPage") {
 		section {
@@ -281,20 +309,31 @@ def namePage() {
 	}
 }
 
+
+// IMPLEMENTATION METHODS
+//
 private lightInputs() {
 	input "lights", "capability.switch", title: "Select lights to control", multiple: true, submitOnChange: true
 }
 
+private actionMap() {
+    def map = [on: "Turn On", off: "Turn Off"]
+    if (lights.find{it.hasCapability("Switch Level")} != null) {
+        map.level = "Turn On & Set Level"
+    }
+    if (lights.find{it.hasCapability("Color Control")} != null) {
+        map.color = "Turn On & Set Color"
+    }
+    map
+}
+
+private actionOptions() {
+    actionMap().collect{[(it.key): it.value]}
+}
+
 private actionInputs() {
 	if (lights) {
-		def actionOptions = [[on: "Turn On"], [off: "Turn Off"]]
-		if (lights.find{it.hasCapability("Switch Level")} != null) {
-			actionOptions += [level: "Turn On & Set Level"]
-		}
-		if (lights.find{it.hasCapability("Color Control")} != null) {
-			actionOptions += [color: "Turn On & Set Color"]
-		}
-		input "action", "enum", title: "Select action", options: actionOptions, submitOnChange: true
+		input "action", "enum", title: "Select action", options: actionOptions(), submitOnChange: true
 		if (action == "color") {
 			input "color", "enum", title: "Color", required: false, multiple:false, options: [
 				["Soft White":"Soft White - Default"],
@@ -313,7 +352,10 @@ private actionInputs() {
 def triggerInputs() {
 	if (settings.action) {
 		section {
-			def triggerOptions = ["Motion", "Open/Close", "Presence", "Switch", "Button", "At Sunrise", "At Sunset", "At a Specific Time", "When Mode Changes"]
+        	def actionTitle = actionMap()[action]
+        	def actionLabel = actionTitle[0] + actionTitle[1..-1].toLowerCase()
+			
+            def triggerOptions = ["Motion", "Open/Close", "Presence", "Switch", "Button", "At Sunrise", "At Sunset", "At a Specific Time", "When Mode Changes"]
 			if (settings.action == "off") {
 				triggerOptions += ["Power Allowance"]
 			}
@@ -321,7 +363,7 @@ def triggerInputs() {
 			switch(trigger) {
 				case "Motion":
 					input "motionSensors", "capability.motionSensor", title: "Motion sensors", multiple: true, required: false
-					input "motionState", "enum", title: "Take action when", options: [["active":"When motion starts"], ["inactive":"When motion stops"]], defaultValue: "active", submitOnChange: true
+					input "motionState", "enum", title: "$actionLabel when", options: [["active":"When motion starts"], ["inactive":"When motion stops"]], defaultValue: "active", submitOnChange: true
 					if (motionState != "inactive") {
 						input "motionStops", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} after motion stops", defaultValue: "false", required: false, submitOnChange: true
 						if (motionStops) {
@@ -331,9 +373,9 @@ def triggerInputs() {
 					break
 				case "Open/Close":
 					input "contactSensors", "capability.contactSensor", title: "Open/close sensors", multiple: true, required: false
-					input "contactState", title: "Take action when", "enum", options: [["open":"When opened"], ["closed":"When closed"]], defaultValue: "open", submitOnChange: true
-					if (contactState != "closed") {
-						input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when closed", defaultValue: "false", required: false, submitOnChange: true
+					input "contactState", title: "$actionLabel when", "enum", options: [["open":"When opened"], ["closed":"When closed"]], defaultValue: "open", submitOnChange: true
+					if (contactState) {
+						input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when ${contactState == 'closed' ? 'opened' : 'closed'}", defaultValue: "false", required: false, submitOnChange: true
 						if (contactCloses) {
 							input "contactClosesTime", "number", title: "After this number of minutes", required: false
 						}
@@ -341,11 +383,11 @@ def triggerInputs() {
 					break
 				case "Presence":
 					input "presenceSensors", "capability.presenceSensor", title: "Presence sensors", multiple: true, required: false
-					input "presenceState", "enum", title: "Take action when", options: [["present":"Someone arrives"], ["not present":"Everyone leaves"]], required: false, submitOnChange: true
+					input "presenceState", "enum", title: "$actionLabel when", options: [["present":"Someone arrives"], ["not present":"Everyone leaves"]], required: false, submitOnChange: true
 					break
 				case "Switch":
 					input "switchTrigger", "capability.switch", title: "Master switch", required: false
-					input "switchState", "enum", title: "Take action when", options: [["on":"Turned on"], ["off":"Turned"]], defaultValue: "on", required: false, submitOnChange: true
+					input "switchState", "enum", title: "$actionLabel when", options: [["on":"Turned on"], ["off":"Turned"]], defaultValue: "on", required: false, submitOnChange: true
 					input "switchToggle", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} as well as ${action}", defaultValue: "true", required: false
 					break
 				case "Button":
@@ -355,14 +397,18 @@ def triggerInputs() {
 					input "buttonToggle", "bool", title: "Toggle on & off", defaultValue: "true", required: false
 					break
 				case "At Sunrise":
+                	input "sunsetFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunset", defaultValue: "false", required: false
 					break
 				case "At Sunset":
+					input "sunriseFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunrise", defaultValue: "false", required: false
 					break
-				case "At a Specific Time":
-					input "scheduledTime", "time", title: "Turn off at", required: false
+                case "At a Specific Time":
+					input "scheduledTime", "time", title: "$actionLabel at", required: false
+                    input "scheduledTimeFollowup", "time", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunset", defaultValue: "false", required: false, submitOnChange: true
 					break
 				case "When Mode Changes":
-					input "triggerModes", "mode", title: "When mode changes to", multiple: true, required: false
+					input "triggerModes", "mode", title: "$actionLabel when mode changes to", multiple: true, required: false
+					input "modeChangeFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} when mode changes back", defaultValue: "false", required: false
 					break
 				case "Power Allowance":
 					input "powerAllowanceTime", "number", title: "After this number of minutes", required: false
@@ -403,7 +449,7 @@ private String defaultLabel() {
 			triggerLabel = motionState == "active" ? "when motion starts" : "when motions stops"
 			break
 		case "Open/Close":
-			triggerLabel = contactState == "open" ? "when ${deviceList(contactSensors)} opens" : "when something closes"
+			triggerLabel = contactState == "open" ? "when ${deviceList(contactSensors)} opens" : "when ${deviceList(contactSensors)} closes"
 			break
 		case "Presence":
 			triggerLabel = presenceState == "present" ? "when someone arrives" : "when everyone leaves"
@@ -499,12 +545,9 @@ private setColor() {
 	}
 }
 
-private updateRecently(evt) {
-	def descriptionText = "$app.label triggered by ${evt?.linkText}"
-	def value = evt?.linkText
+private dataFor(evt) {
 	def icon = null
 	def color = "#dddddd"
-	if (evt) {
 		switch (evt.name) {
 			case "contact":
 				icon = "st.contact.contact.$evt.value"
@@ -513,6 +556,10 @@ private updateRecently(evt) {
 			case "motion":
 				icon = "st.motion.motion.$evt.value"
 				color = evt.value == "active" ? "#53a7c0" : "#dddddd"
+				break
+			case "presence":
+				icon = "st.presence.tile.presence-default"
+				color = evt.value == "present" ? "#53a7c0" : "#dddddd"
 				break
 			case "lock":
 				icon = "st.locks.lock.$evt.value"
@@ -528,11 +575,11 @@ private updateRecently(evt) {
 				break
 			case "sunrise":
 				icon = "st.Weather.weather14"
-				color = "#ffa81e"
+				color = "#ffe71e"
 				break
 			case "sunset":
 				icon = "st.Weather.weather4"
-				color = "#666666"
+				color = "#ff631e"
 				break
 			case "mode":
 				icon = "st.nest.nest-home"
@@ -545,10 +592,22 @@ private updateRecently(evt) {
 				icon = "st.unknown.zwave.remote-controller"
 				break
 		}
+    [icon: icon, backgroundColor: color]
+}
+
+private updateRecently(evt) {
+	def descriptionText
+	def value
+    def data
+	if (evt) {
+    	data = dataFor(evt)
+        descriptionText = "$app.label triggered by ${evt?.linkText}"
+        value = evt?.linkText
 	}
 	else {
-		icon = "st.Office.office6"
+		data = [icon: "st.Office.office6", colo: "#dddddd"]
 		descriptionText = "$app.label triggered at a set time"
+        value = ""
 	}
 
 	sendEvent(
@@ -558,8 +617,79 @@ private updateRecently(evt) {
 		displayed: false,
 		name: evt?.name,
 		value: value,
-		data: [icon: icon, backgroundColor: color])
+		data: data)
 
+}
+
+private updateRecentlyFollowup(evt) {
+	def descriptionText
+	def value
+    def data
+    def actionText = action == "off" ? 'on' : "off"
+	if (evt) {
+    	data = dataFor(evt)
+        descriptionText = "$app.label turned $actionText ${followupPhrase(evt)}"
+        value = evt?.linkText
+	}
+    else if (trigger == "Motion") {
+    	if (motionState == "active") {
+            data = [icon: "st.motion.motion.inactive", backgroundColor: "#dddddd"]
+            descriptionText = "$app.label turned $actionText when motion stopped"
+            value = "inactive"
+        }
+        else {
+            data = [icon: "st.motion.motion.active", backgroundColor: "#53a7c0"]
+            descriptionText = "$app.label turned $actionText when motion detected"
+            value = "active"
+        }
+    }
+    else if (trigger == "Open/Close") {
+    	if (contactState == "open") {
+            data = [icon: "st.contact.contact.closed", backgroundColor: "#79b821"]
+            descriptionText = "$app.label turned $actionText when closed"
+            value = "closed"
+        }
+        else {
+            data = [icon: "st.contact.contact.open", backgroundColor: "#ffa81e"]
+            descriptionText = "$app.label turned $actionText when opened"
+            value = "open"
+        }
+    }
+	else {
+		data = [icon: "st.Office.office6", backgroundColor: "#dddddd"]
+		descriptionText = "$app.label turned $actionText at a set time"
+        value = ""
+	}
+
+	sendEvent(
+		linkText: app.label,
+		descriptionText: descriptionText,
+		eventType: "SOLUTION_EVENT",
+		displayed: false,
+		name: evt?.name,
+		value: value,
+		data: data)
+
+}
+
+private followupPhrase(evt) {
+	switch (evt.name) {
+    	case "motion":
+        	return "after motion ${evt.value == 'active' ? 'detected' : 'stopped'}"
+    	case "contact":
+        	return "when $evt.linkText ${evt.value == 'open' ? 'opened' : 'closed'}"
+        case "presence":
+        	return "when $evt.linkText ${evt.value == 'present' ? 'arrived' : 'departed'}"
+        case "switch":
+        	return ""
+        case "mode":
+        	return "mode changed to $evt.value"
+        case "sunrise":
+        	return "at sunrise"
+        case "sunset":
+        	return "at sunset"
+    }
+    return "when $evt.name $evt.value"
 }
 
 private deviceList(device) {
