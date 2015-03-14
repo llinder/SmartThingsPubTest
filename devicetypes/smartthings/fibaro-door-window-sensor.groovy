@@ -34,7 +34,7 @@
  * @return none
  */
  metadata {
-	definition (name: "Fibaro Door/Window Sensor", namespace: "smartthings", author: "Todd Wackford") {      
+	definition (name: "Fibaro Door/Window Sensor", namespace: "smartthings", author: "SmartThings") {      
 		//capability 	"Temperature Measurement"  //UNCOMMENT ME IF TEMP INSTALLED      
 		capability 	"Contact Sensor"
 		capability 	"Sensor"
@@ -108,28 +108,26 @@
 def parse(String description)
 {
 	def result = []
-	def cmd = zwave.parse(description, [0x30: 1, 0x84: 1, 0x9C: 1, 0x70: 2, 0x80: 1, 0x72: 2, 0x56: 2, 0x60: 3])
+	def cmd = zwave.parse(description, [0x30: 1, 0x84: 1, 0x9C: 1, 0x70: 2, 0x80: 1, 0x72: 2, 0x56: 1, 0x60: 3])
 	if (cmd) {
-		if( cmd.CMD == "8407" ) { 
-        	result << new physicalgraph.device.HubAction(zwave.wakeUpV1.wakeUpNoMoreInformation().format()) 
-        }
-		result << createEvent(zwaveEvent(cmd))   
+		result += zwaveEvent(cmd)
 	}
-    
-    if (description == "updated") {
-    	if (!state.MSR) {
-			result << response(zwave.wakeUpV1.wakeUpIntervalSet(seconds: 60*60, nodeid:zwaveHubNodeId))
-			result << response(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
-            result << response(zwave.batteryV1.batteryGet().format())
-		} 
-    }
-    
-    result << response(zwave.batteryV1.batteryGet().format())
-    
-    if ( result[0] != null ) {
-		log.debug "Parse returned ${result}"
-		result
-    }
+	log.debug "parsed '$description' to ${result.inspect()}"
+	result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.crc16encapv1.Crc16Encap cmd)
+{
+	def versions = [0x30: 1, 0x84: 1, 0x9C: 1, 0x70: 2, 0x80: 1, 0x72: 2, 0x60: 3]
+	// def encapsulatedCommand = cmd.encapsulatedCommand(versions)
+	def version = versions[cmd.commandClass as Integer]
+	def ccObj = version ? zwave.commandClass(cmd.commandClass, version) : zwave.commandClass(cmd.commandClass)
+	def encapsulatedCommand = ccObj?.command(cmd.command)?.parse(cmd.data)
+	if (!encapsulatedCommand) {
+		log.debug "Could not extract command from $cmd"
+	} else {
+		return zwaveEvent(encapsulatedCommand)
+	}
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
@@ -140,12 +138,18 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
 	}
 }
 
-// Event Generation
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
-{	
-	[descriptionText: "${device.displayName} woke up", isStateChange: false]
-	
+{
+	def event = createEvent(descriptionText: "${device.displayName} woke up", isStateChange: false)
+	def cmds = []
+	if (!state.lastbat || now() - state.lastbat > 24*60*60*1000) {
+		cmds << zwave.batteryV1.batteryGet().format()
+	} else {
+		cmds << zwave.wakeUpV1.wakeUpNoMoreInformation().format()
+	}
+	[event, response(cmds)]
 }
+
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelReport cmd)
 {
@@ -159,16 +163,21 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelR
 			map.name = "temperature"
 			break;
 	}
-	map
+	createEvent(map)
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
-	def map = [:]
-	map.name = "battery"
-	map.value = cmd.batteryLevel > 0 ? cmd.batteryLevel.toString() : 1
-	map.unit = "%"
-	map.displayed = false
-	map
+	def map = [ name: "battery", unit: "%" ]
+	if (cmd.batteryLevel == 0xFF) {
+		map.value = 1
+		map.descriptionText = "${device.displayName} has a low battery"
+		map.isStateChange = true
+	} else {
+		map.value = cmd.batteryLevel
+	}
+	state.lastbat = now()
+	[createEvent(map), response(zwave.wakeUpV1.wakeUpNoMoreInformation())]
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv1.SensorBinaryReport cmd) {
@@ -181,13 +190,12 @@ def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv1.SensorBinaryReport cm
 	else {
 		map.descriptionText = "$device.displayName is open"
 	}
-    
-    response(zwave.batteryV1.batteryGet().format()) // update battery when we open/close
-	map
+	createEvent(map)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
     //log.debug "in Zwave BasicSet"
+	[]
 }
 
 
@@ -202,23 +210,27 @@ def zwaveEvent(physicalgraph.zwave.commands.sensoralarmv1.SensorAlarmReport cmd)
 	else {
 		map.descriptionText = "$device.displayName is secure"
 	}
-    map  
+	createEvent(map)
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	log.debug "Catchall reached for cmd: ${cmd.toString()}}"
-	[:]
+	[]
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
-	if ((cmd.parameterNumber == 15) && (cmd.configurationValue[0] == 1)) { //error in temp probe
-        sendEvent(name:"temperature",value:"-99")
-	}
-    
-    if ((cmd.parameterNumber == 15) && (cmd.configurationValue[0] == 255)) { //no temp probe
-		sendEvent(name:"temperature",value:"")
-    }
+	def result = []
 	log.debug "${device.displayName} parameter '${cmd.parameterNumber}' with a byte size of '${cmd.size}' is set to '${cmd.configurationValue}'"
+
+	if (cmd.parameterNumber == 15) {
+		if (cmd.configurationValue[0] == 1) { //error in temp probe
+			result << createEvent(name:"temperature", value:"-99")
+		} else if (cmd.configurationValue[0] == 255) { //no temp probe
+			result << createEvent(name:"temperature", value:"")
+		}
+		result += response(zwave.batteryV1.batteryGet().format())  // send this after configure() runs
+	}
+	result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
@@ -227,10 +239,6 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 	def msr = String.format("%04X-%04X-%04X", cmd.manufacturerId, cmd.productTypeId, cmd.productId)
 	log.debug "msr: $msr"
 	device.updateDataValue(["MSR", msr])
-    
-    if ( msr == "010F-0700-2000" ) { //this is the msr and device type for the fibaro motion sensor
-    	configure()
-    }
 
 	result << createEvent(descriptionText: "$device.displayName MSR: $msr", isStateChange: false)
 	result
@@ -245,24 +253,27 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
  */
 def configure() {
 	log.debug "Configuring Device..."
-    def cmds = []
-    cmds << zwave.configurationV1.configurationSet(configurationValue: [0,0], parameterNumber: 1, size: 2).format()
-    // send associate to group 3 to get sensor data reported only to hub
-    cmds << zwave.associationV2.associationSet(groupingIdentifier:3, nodeId:[zwaveHubNodeId]).format()
-    
-    // send associate to group 2 to get tamper alarm data reported
-    cmds << zwave.associationV2.associationSet(groupingIdentifier:2, nodeId:[zwaveHubNodeId]).format()
-    
-    // turn on the tamper alarm
+	def cmds = []
+	cmds << zwave.configurationV1.configurationSet(configurationValue: [0,0], parameterNumber: 1, size: 2).format()
+	// send associate to group 3 to get sensor data reported only to hub
+	cmds << zwave.associationV2.associationSet(groupingIdentifier:3, nodeId:[zwaveHubNodeId]).format()
+	
+	// send associate to group 2 to get tamper alarm data reported
+	cmds << zwave.associationV2.associationSet(groupingIdentifier:2, nodeId:[zwaveHubNodeId]).format()
+
+	// turn on the tamper alarm
 	cmds << zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 10, size: 1).format()
-    cmds << zwave.configurationV1.configurationGet(parameterNumber: 10).format()
-    
-    // temperature change sensitivity
+	//cmds << zwave.configurationV1.configurationGet(parameterNumber: 10).format()
+	
+	// temperature change sensitivity
 	cmds << zwave.configurationV1.configurationSet(configurationValue: [4], parameterNumber: 12, size: 1).format()
-    cmds << zwave.configurationV1.configurationGet(parameterNumber: 12).format()
-    
+	//cmds << zwave.configurationV1.configurationGet(parameterNumber: 12).format()
+	
+	// remove group 1 association to stop redundant BasicSet
+	cmds << zwave.associationV1.associationRemove(groupingIdentifier:1, nodeId:zwaveHubNodeId).format()
+	
 	// see if there is a temp probe on board and is it working
-    cmds << zwave.configurationV1.configurationGet(parameterNumber: 15).format()
+	cmds << zwave.configurationV1.configurationGet(parameterNumber: 15).format()
 
 	delayBetween(cmds, 500)
 }
@@ -271,6 +282,7 @@ def configure() {
 def test() {
 	def params = [paramNumber:10,value:1,size:1]
 	updateZwaveParam(params)
+	//zwave.wakeUpV1.wakeUpIntervalSet(seconds: 30, nodeid:zwaveHubNodeId).format()
 }
 
  /**
@@ -358,4 +370,3 @@ def listCurrentParams() {
     
 	delayBetween(cmds, 500)
 }
-

@@ -38,7 +38,7 @@
  * @return none
  */
  metadata {
-	definition (name: "Fibaro Motion Sensor", namespace: "smartthings", author: "Todd Wackford") {
+	definition (name: "Fibaro Motion Sensor", namespace: "smartthings", author: "SmartThings") {
 		capability 	"Motion Sensor"
 		capability 	"Temperature Measurement"
 		capability 	"Acceleration Sensor"
