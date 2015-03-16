@@ -369,33 +369,47 @@ def locationHandler(evt) {
 	{ // HUE BRIDGE RESPONSES
 		log.trace "HUE BRIDGE RESPONSES"
 		def headerString = new String(parsedEvent.headers.decodeBase64())
+		def bodyString = new String(parsedEvent.body.decodeBase64())
 		def type = (headerString =~ /Content-type:.*/) ? (headerString =~ /Content-type:.*/)[0] : null
-		if (type?.contains("xml")) {
-			// description.xml response (application/xml)
-			def body = new XmlSlurper().parseText(parseBody(parsedEvent.body))
-			if (body?.device?.modelName?.text().startsWith("Philips hue bridge")) {
+		def body
+
+		if (type?.contains("xml"))
+		{ // description.xml response (application/xml)
+			body = new XmlSlurper().parseText(bodyString)
+
+			if (body?.device?.modelName?.text().startsWith("Philips hue bridge"))
+			{
 				def bridges = getHueBridges()
 				def bridge = bridges.find {it?.key?.contains(body?.device?.UDN?.text())}
-				if (bridge) {
+				if (bridge)
+				{
 					bridge.value << [name:body?.device?.friendlyName?.text(), serialNumber:body?.device?.serialNumber?.text(), verified: true]
-				} else {
+				}
+				else
+				{
 					log.error "/description.xml returned a bridge that didn't exist"
 				}
 			}
-		} else if(type?.contains("json")) {
-			//(application/json)
-			def body = new groovy.json.JsonSlurper().parseText(parseBody(parsedEvent.body))
-			if (body?.success != null) {
-				//POST /api response (application/json)
-				if (body?.success?.username) {
+		}
+		else if(type?.contains("json"))
+		{ //(application/json)
+			body = new groovy.json.JsonSlurper().parseText(bodyString)
+
+			if (body?.success != null)
+			{ //POST /api response (application/json)
+				if (body?.success?.username)
+				{
 					state.username = body.success.username[0]
 					state.hostname = selectedHue
 				}
-			} else if (body.error != null) {
+			}
+			else if (body.error != null)
+			{
 				//TODO: handle retries...
 				log.error "ERROR: application/json ${body.error}"
-			} else {
-				//GET /api/${state.username}/lights response (application/json)
+			}
+			else
+			{ //GET /api/${state.username}/lights response (application/json)
 				if (!body?.state?.on) { //check if first time poll made it here by mistake
 					def bulbs = getHueBulbs()
 					log.debug "Adding bulbs to state!"
@@ -405,22 +419,10 @@ def locationHandler(evt) {
 				}
 			}
 		}
-	} else {
+	}
+	else {
 		log.trace "NON-HUE EVENT $evt.description"
 	}
-}
-
-private def parseBody(def body) {
-	def decodedBytes = body.decodeBase64()
-	def bodyString
-	try {
-		bodyString = new String(decodedBytes)
-	} catch (Exception e) {
-		// Keep this log for debugging StringIndexOutOfBoundsException issue
-		log.error("Exception decoding bytes in hue connect: ${decodedBytes}")
-		throw e
-	}
-	return bodyString
 }
 
 private def parseEventMessage(Map event) {
