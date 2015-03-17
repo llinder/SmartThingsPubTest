@@ -15,7 +15,7 @@
  */
 definition(
     name: "Good Night House",
-    namespace: "",
+    namespace: "charette.joseph@gmail.com",
     author: "Joseph Charette",
     description: "Some on, some off with delay for bedtime, Lock The Doors",
     category: "Convenience",
