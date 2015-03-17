@@ -147,7 +147,7 @@ def subscribeToEvents() {
 }
 
 def eventHandler(evt) {
-	log.trace "eventHandler($evt.name: $evt.value)"
+	log.trace "Executing Mood Lighting"
 	if (allOk) {
 		log.trace "allOk"
 		def lastTime = state[frequencyKey(evt)]
@@ -176,7 +176,7 @@ def modeChangeHandler(evt) {
 
 def scheduledTimeHandler() {
 	log.trace "scheduledTimeHandler()"
-	eventHandler(null)
+	eventHandler()
 }
 
 def appTouchHandler(evt) {
