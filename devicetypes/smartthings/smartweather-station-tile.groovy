@@ -148,12 +148,16 @@ def parse(String description) {
 }
 
 def installed() {
-	runPeriodically(20*60, poll)
+	runPeriodically(3600, poll)
+}
+
+def uninstalled() {
+	unschedule()
 }
 
 // handle commands
 def poll() {
-	log.debug "Executing 'poll', location: ${location.name}"
+	log.debug "WUSTATION: Executing 'poll', location: ${location.name}"
 
 	// Current conditions
 	def obs = get("conditions")?.current_observation
@@ -218,10 +222,10 @@ def poll() {
 		// Alerts
 		def alerts = get("alerts")?.alerts
 		def newKeys = alerts?.collect{it.type + it.date_epoch} ?: []
-		log.debug "WUSTATION: newKeys: $newKeys"
+		log.debug "WUSTATION: newKeys = $newKeys"
 		log.trace device.currentState("alertKeys")
 		def oldKeys = device.currentState("alertKeys")?.jsonValue
-		log.debug "WUSTATION: oldKeys: $oldKeys"
+		log.debug "WUSTATION: oldKeys = $oldKeys"
 
 		def noneString = "no current weather alerts"
 		if (!newKeys && oldKeys == null) {
