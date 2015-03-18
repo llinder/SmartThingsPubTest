@@ -218,12 +218,12 @@ def addSwitches() {
 		if (!d) {
 			log.debug "Creating WeMo Switch with dni: ${selectedSwitch.value.mac}"
 			d = addChildDevice("smartthings", "Wemo Switch", selectedSwitch.value.mac, selectedSwitch?.value.hub, [
-				"label": selectedSwitch?.value?.name ?: "Wemo Switch",
-				"data": [
-					"mac": selectedSwitch.value.mac,
-					"ip": selectedSwitch.value.ip,
-					"port": selectedSwitch.value.port
-				]
+					"label": selectedSwitch?.value?.name ?: "Wemo Switch",
+					"data": [
+							"mac": selectedSwitch.value.mac,
+							"ip": selectedSwitch.value.ip,
+							"port": selectedSwitch.value.port
+					]
 			])
 
 			log.debug "Created ${d.displayName} with id: ${d.id}, dni: ${d.deviceNetworkId}"
@@ -432,66 +432,79 @@ def locationHandler(evt) {
 
 	}
 	else if (parsedEvent.headers && parsedEvent.body) {
+		String headerString = new String(parsedEvent.headers.decodeBase64())?.toLowerCase()
+		if (headerString != null && (headerString.contains('text/xml') || headerString.contains('application/xml'))) {
+			def body = parseXmlBody(parsedEvent.body)
+			if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:controllee:1"))
+			{
+				def switches = getWemoSwitches()
+				def wemoSwitch = switches.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (wemoSwitch)
+				{
+					wemoSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				}
+				else
+				{
+					log.error "/setup.xml returned a wemo device that didn't exist"
+				}
+			}
 
-		def headerString = new String(parsedEvent.headers.decodeBase64())
-		def bodyString = new String(parsedEvent.body.decodeBase64())
-		def body = new XmlSlurper().parseText(bodyString)
-		if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:controllee:1"))
-		{
-			def switches = getWemoSwitches()
-			def wemoSwitch = switches.find {it?.key?.contains(body?.device?.UDN?.text())}
-			if (wemoSwitch)
+			if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:insight:1"))
 			{
-				wemoSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				def switches = getWemoSwitches()
+				def wemoSwitch = switches.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (wemoSwitch)
+				{
+					wemoSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				}
+				else
+				{
+					log.error "/setup.xml returned a wemo device that didn't exist"
+				}
 			}
-			else
-			{
-				log.error "/setup.xml returned a wemo device that didn't exist"
-			}
-		}
 
-		if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:insight:1"))
-		{
-			def switches = getWemoSwitches()
-			def wemoSwitch = switches.find {it?.key?.contains(body?.device?.UDN?.text())}
-			if (wemoSwitch)
+			if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:sensor")) //?:1
 			{
-				wemoSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				def motions = getWemoMotions()
+				def wemoMotion = motions.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (wemoMotion)
+				{
+					wemoMotion.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				}
+				else
+				{
+					log.error "/setup.xml returned a wemo device that didn't exist"
+				}
 			}
-			else
-			{
-				log.error "/setup.xml returned a wemo device that didn't exist"
-			}
-		}
 
-		if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:sensor")) //?:1
-		{
-			def motions = getWemoMotions()
-			def wemoMotion = motions.find {it?.key?.contains(body?.device?.UDN?.text())}
-			if (wemoMotion)
+			if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:lightswitch")) //?:1
 			{
-				wemoMotion.value << [name:body?.device?.friendlyName?.text(), verified: true]
-			}
-			else
-			{
-				log.error "/setup.xml returned a wemo device that didn't exist"
-			}
-		}
-
-		if (body?.device?.deviceType?.text().startsWith("urn:Belkin:device:lightswitch")) //?:1
-		{
-			def lightSwitches = getWemoLightSwitches()
-			def wemoLightSwitch = lightSwitches.find {it?.key?.contains(body?.device?.UDN?.text())}
-			if (wemoLightSwitch)
-			{
-				wemoLightSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
-			}
-			else
-			{
-				log.error "/setup.xml returned a wemo device that didn't exist"
+				def lightSwitches = getWemoLightSwitches()
+				def wemoLightSwitch = lightSwitches.find {it?.key?.contains(body?.device?.UDN?.text())}
+				if (wemoLightSwitch)
+				{
+					wemoLightSwitch.value << [name:body?.device?.friendlyName?.text(), verified: true]
+				}
+				else
+				{
+					log.error "/setup.xml returned a wemo device that didn't exist"
+				}
 			}
 		}
 	}
+}
+
+private def parseXmlBody(def body) {
+	def decodedBytes = body.decodeBase64()
+	def bodyString
+	try {
+		bodyString = new String(decodedBytes)
+	} catch (Exception e) {
+		// Keep this log for debugging StringIndexOutOfBoundsException issue
+		log.error("Exception decoding bytes in sonos connect: ${decodedBytes}")
+		throw e
+	}
+	return new XmlSlurper().parseText(bodyString)
 }
 
 private def parseDiscoveryMessage(String description) {
