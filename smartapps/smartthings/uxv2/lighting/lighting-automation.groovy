@@ -18,7 +18,7 @@ definition(
 	namespace: "smartthings/uxv2/lighting",
 	author: "SmartThings",
 	description: "Prototype lighting automation app uses dynamically updating preferences page to configure actions and triggers. Also automatically names app.",
-	category: "SmartSolutions",
+	category: "",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/ModeMagic/Cat-ModeMagic.png",
 	iconX2Url: "https://s3.amazonaws.com/smartapp-icons/ModeMagic/Cat-ModeMagic@2x.png",
 	iconX3Url: "https://s3.amazonaws.com/smartapp-icons/ModeMagic/Cat-ModeMagic@3x.png",
@@ -252,7 +252,6 @@ def startAction(evt = [:]) {
 			setColor()
 			break
 	}
-    updateRecently(evt)
 }
 
 // Action dispatcher for followup events
@@ -270,7 +269,6 @@ def stopAction(evt = [:]) {
 			lights.on()
 			break
 	}
-    updateRecentlyFollowup(evt)
 }
 
 
@@ -505,7 +503,7 @@ private setColor() {
 			break;
 		case "Warm White":
 			hueColor = 20
-			saturation = 80 //83
+			saturation = 80
 			break;
 		case "Blue":
 			hueColor = 70
@@ -546,155 +544,6 @@ private setColor() {
 	}
 }
 
-private dataFor(evt) {
-	def icon = null
-	def color = action == "off" ? "#dddddd" : "#79b821"
-		switch (evt.name) {
-			case "contact":
-				icon = "st.contact.contact.$evt.value"
-				//color = evt.value == "open" ? "#ffa81e" : "#79b821"
-				break
-			case "motion":
-				icon = "st.motion.motion.$evt.value"
-				//color = evt.value == "active" ? "#53a7c0" : "#dddddd"
-				break
-			case "presence":
-				icon = "st.presence.tile.presence-default"
-				//color = evt.value == "present" ? "#53a7c0" : "#dddddd"
-				break
-			case "lock":
-				icon = "st.locks.lock.$evt.value"
-				//color = evt.value == "locked" ? "#79b821" : "#dddddd"
-				break
-			case "water":
-				icon = "st.alarm.water.$evt.value"
-				//color = evt.value == "wet" ? "#53a7c0" : "#dddddd"
-				break
-			case "smoke":
-				icon = "st.alarm.smoke.$evt.value"
-				//color = evt.value == "clear" ? "#dddddd" : "#e86d13"
-				break
-			case "sunrise":
-				icon = "st.Weather.weather14"
-				//color = "#ffe71e"
-				break
-			case "sunset":
-				icon = "st.Weather.weather4"
-				//color = "#ff631e"
-				break
-			case "mode":
-				icon = "st.nest.nest-home"
-				break
-			case "switch":
-				icon = "st.Home.home30"
-				//color = evt.value == "on" ? "#79b821" : "#dddddd"
-				break
-			case "button":
-				icon = "st.unknown.zwave.remote-controller"
-				break
-		}
-    [icon: icon, backgroundColor: color]
-}
-
-private updateRecently(evt) {
-	def descriptionText
-	def value
-    def data
-	if (evt) {
-    	data = dataFor(evt)
-        descriptionText = "$app.label triggered by ${evt?.linkText}"
-        value = evt?.linkText
-	}
-	else {
-		data = [icon: "st.Office.office6", backgroundColor: action == "off" ? "#dddddd" : "#79b821"]
-		descriptionText = "$app.label triggered on schedule"
-        value = ""
-	}
-
-	sendEvent(
-		linkText: app.label,
-		descriptionText: descriptionText,
-		eventType: "SOLUTION_EVENT",
-		displayed: false,
-		name: evt?.name,
-		value: value,
-		data: data)
-
-}
-
-private updateRecentlyFollowup(evt) {
-	def descriptionText
-	def value
-    def data
-    def actionText = action == "off" ? 'on' : "off"
-    def color = action == "off" ? "#79b821" : "#dddddd"
-    
-	if (evt) {
-    	data = dataFor(evt)
-        data.backgroundColor = color
-        descriptionText = "$app.label turned $actionText ${followupPhrase(evt)}"
-        value = evt?.linkText
-	}
-    else if (trigger == "Motion") {
-    	if (motionState == "active") {
-            data = [icon: "st.motion.motion.inactive", backgroundColor: color]
-            descriptionText = "$app.label turned $actionText when motion stopped"
-            value = "inactive"
-        }
-        else {
-            data = [icon: "st.motion.motion.active", backgroundColor: color]
-            descriptionText = "$app.label turned $actionText when motion detected"
-            value = "active"
-        }
-    }
-    else if (trigger == "Open/Close") {
-    	if (contactState == "open") {
-            data = [icon: "st.contact.contact.closed", backgroundColor: color]
-            descriptionText = "$app.label turned $actionText when closed"
-            value = "closed"
-        }
-        else {
-            data = [icon: "st.contact.contact.open", backgroundColor: color]
-            descriptionText = "$app.label turned $actionText when opened"
-            value = "open"
-        }
-    }
-	else {
-		data = [icon: "st.Office.office6", backgroundColor: color]
-		descriptionText = "$app.label turned $actionText on schedule"
-        value = ""
-	}
-
-	sendEvent(
-		linkText: app.label,
-		descriptionText: descriptionText,
-		eventType: "SOLUTION_EVENT",
-		displayed: false,
-		name: evt?.name,
-		value: value,
-		data: data)
-
-}
-
-private followupPhrase(evt) {
-	switch (evt.name) {
-    	case "motion":
-        	return "after motion ${evt.value == 'active' ? 'detected' : 'stopped'}"
-    	case "contact":
-        	return "when $evt.linkText ${evt.value == 'open' ? 'opened' : 'closed'}"
-        case "presence":
-        	return "when $evt.linkText ${evt.value == 'present' ? 'arrived' : 'departed'}"
-        case "switch":
-        	return ""
-        case "mode":
-        	return "mode changed to $evt.value"
-        case "sunrise":
-        	return "at sunrise"
-        case "sunset":
-        	return "at sunset"
-    }
-    return "when $evt.name $evt.value"
-}
 
 private deviceList(device) {
 	device.displayName
