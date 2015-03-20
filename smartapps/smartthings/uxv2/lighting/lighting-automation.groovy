@@ -45,7 +45,7 @@ def updated() {
 	log.debug "Updated with settings: ${settings}"
 
 	unsubscribe()
-	unschedule()
+	unschedule([cassandra:true])
 	initialize()
 }
 
@@ -97,9 +97,9 @@ def initialize() {
             }
             break
 		case "At a Specific Time":
-			schedule(scheduledTime, triggerHandler)
+			schedule(scheduledTime, triggerHandler, [cassandra:true])
             if (scheduledTimeFollowup) {
-            	schedule(scheduledTimeFollowup, stopHandler)
+            	schedule(scheduledTimeFollowup, stopHandler, [cassandra:true])
             }
 			break
 		case "When Mode Changes":

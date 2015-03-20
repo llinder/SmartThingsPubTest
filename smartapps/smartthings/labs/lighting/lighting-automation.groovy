@@ -45,7 +45,7 @@ def updated() {
 	log.debug "Updated with settings: ${settings}"
 
 	unsubscribe()
-	unschedule()
+	unschedule([cassandra:true])
 	initialize()
 }
 
@@ -86,21 +86,21 @@ def initialize() {
 			break
 		case "At Sunrise":
 			subscribe(location, "sunrise", triggerHandler)
-            if (sunsetFollowup) {
-            	subscribe(location, "sunset", stopHandler)
-            }
+			if (sunsetFollowup) {
+				subscribe(location, "sunset", stopHandler)
+			}
 			break
 		case "At Sunset":
 			subscribe(location, "sunset", triggerHandler)
-            if (sunriseFollowup) {
-            	subscribe(location, "sunrise", stopHandler)
-            }
-            break
+			if (sunriseFollowup) {
+				subscribe(location, "sunrise", stopHandler)
+			}
+			break
 		case "At a Specific Time":
-			schedule(scheduledTime, triggerHandler)
-            if (scheduledTimeFollowup) {
-            	schedule(scheduledTimeFollowup, stopHandler)
-            }
+			schedule(scheduledTime, triggerHandler, [cassandra:true])
+			if (scheduledTimeFollowup) {
+				schedule(scheduledTimeFollowup, stopHandler, [cassandra:true])
+			}
 			break
 		case "When Mode Changes":
 			subscribe(location, modeChangeHandler)
@@ -129,12 +129,12 @@ def triggerHandler(evt = [:]) {
 def modeChangeHandler(evt) {
 	log.trace "modeChangeHandler($evt.name: $evt.value)"
 	if (allOk) {
-        if (evt.value in triggerModes) {
-            startAction(evt)
-        }
-        else if (modeChangeFollowup && !evt.value in triggerModes) {
-        	stopAction(evt)
-        }
+		if (evt.value in triggerModes) {
+			startAction(evt)
+		}
+		else if (modeChangeFollowup && !evt.value in triggerModes) {
+			stopAction(evt)
+		}
 	}
 }
 
@@ -154,20 +154,20 @@ def buttonHandler(evt)
 	def data = evt.jsonData
 	log.trace "buttonHandler($evt.name: $evt.value, $data)"
 	if (allOk) {
-    	if (data.buttonNumber == buttonNumber as Integer) {
-        	if (evt.value == buttonAction) {
-                if (state.pushed) {
-                    log.trace "stopAction()"
-                    stopAction(evt)
-                    state.pushed = false
-                }
-                else {
-                    log.trace "startAction()"
-                    startAction(evt)
-                    state.pushed = true
-                }
-            }
-        }
+		if (data.buttonNumber == buttonNumber as Integer) {
+			if (evt.value == buttonAction) {
+				if (state.pushed) {
+					log.trace "stopAction()"
+					stopAction(evt)
+					state.pushed = false
+				}
+				else {
+					log.trace "startAction()"
+					startAction(evt)
+					state.pushed = true
+				}
+			}
+		}
 	}
 }
 
@@ -260,7 +260,7 @@ def stopAction(evt = [:]) {
 	switch(action) {
 		case "on":
 		case "level":
-        case "color":
+		case "color":
 			log.debug "off()"
 			lights.off()
 			break
@@ -315,18 +315,18 @@ private lightInputs() {
 }
 
 private actionMap() {
-    def map = [on: "Turn On", off: "Turn Off"]
-    if (lights.find{it.hasCapability("Switch Level")} != null) {
-        map.level = "Turn On & Set Level"
-    }
-    if (lights.find{it.hasCapability("Color Control")} != null) {
-        map.color = "Turn On & Set Color"
-    }
-    map
+	def map = [on: "Turn On", off: "Turn Off"]
+	if (lights.find{it.hasCapability("Switch Level")} != null) {
+		map.level = "Turn On & Set Level"
+	}
+	if (lights.find{it.hasCapability("Color Control")} != null) {
+		map.color = "Turn On & Set Color"
+	}
+	map
 }
 
 private actionOptions() {
-    actionMap().collect{[(it.key): it.value]}
+	actionMap().collect{[(it.key): it.value]}
 }
 
 private actionInputs() {
@@ -350,10 +350,10 @@ private actionInputs() {
 def triggerInputs() {
 	if (settings.action) {
 		section {
-        	def actionTitle = actionMap()[action]
-        	def actionLabel = actionTitle[0] + actionTitle[1..-1].toLowerCase()
-			
-            def triggerOptions = ["Motion", "Open/Close", "Presence", "Switch", "Button", "At Sunrise", "At Sunset", "At a Specific Time", "When Mode Changes"]
+			def actionTitle = actionMap()[action]
+			def actionLabel = actionTitle[0] + actionTitle[1..-1].toLowerCase()
+
+			def triggerOptions = ["Motion", "Open/Close", "Presence", "Switch", "Button", "At Sunrise", "At Sunset", "At a Specific Time", "When Mode Changes"]
 			if (settings.action == "off") {
 				triggerOptions += ["Power Allowance"]
 			}
@@ -372,10 +372,10 @@ def triggerInputs() {
 				case "Open/Close":
 					input "contactSensors", "capability.contactSensor", title: "Open/close sensors", multiple: true, required: false
 					input "contactState", title: "$actionLabel when", "enum", options: [["open":"When opened"], ["closed":"When closed"]], defaultValue: "open", submitOnChange: true
-                    input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when ${contactState == 'closed' ? 'opened' : 'closed'}", defaultValue: "false", required: false, submitOnChange: true
-                    if (contactCloses) {
-                        input "contactClosesTime", "number", title: "After this number of minutes", required: false
-                    }
+					input "contactCloses", "bool", title: "Turn ${action == "off" ? 'on' : 'off'} when ${contactState == 'closed' ? 'opened' : 'closed'}", defaultValue: "false", required: false, submitOnChange: true
+					if (contactCloses) {
+						input "contactClosesTime", "number", title: "After this number of minutes", required: false
+					}
 					break
 				case "Presence":
 					input "presenceSensors", "capability.presenceSensor", title: "Presence sensors", multiple: true, required: false
@@ -393,14 +393,14 @@ def triggerInputs() {
 					input "buttonToggle", "bool", title: "Toggle on & off", defaultValue: "true", required: false
 					break
 				case "At Sunrise":
-                	input "sunsetFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunset", defaultValue: "false", required: false
+					input "sunsetFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunset", defaultValue: "false", required: false
 					break
 				case "At Sunset":
 					input "sunriseFollowup", "bool", title: "Also turn ${action == "off" ? 'on' : 'off'} at sunrise", defaultValue: "false", required: false
 					break
-                case "At a Specific Time":
+				case "At a Specific Time":
 					input "scheduledTime", "time", title: "$actionLabel at", required: false
-                    input "scheduledTimeFollowup", "time", title: "Also turn ${action == "off" ? 'on' : 'off'} at", defaultValue: "false", required: false, submitOnChange: true
+					input "scheduledTimeFollowup", "time", title: "Also turn ${action == "off" ? 'on' : 'off'} at", defaultValue: "false", required: false, submitOnChange: true
 					break
 				case "When Mode Changes":
 					input "triggerModes", "mode", title: "$actionLabel when mode changes to", multiple: true, required: false
@@ -416,14 +416,14 @@ def triggerInputs() {
 
 def otherInputs() {
 	if (settings.trigger) {
-    	def timeLabel = timeIntervalLabel()
+		def timeLabel = timeIntervalLabel()
 		section(title: "More options", hidden: hideOptionsSection(), hideable: true) {
-        	def timeBasedTrigger = trigger in ["At Sunrise", "At Sunset", "At a Specific Time"]
-            log.trace "timeBasedTrigger: $timeBasedTrigger"
-        	if (!timeBasedTrigger) {
+			def timeBasedTrigger = trigger in ["At Sunrise", "At Sunset", "At a Specific Time"]
+			log.trace "timeBasedTrigger: $timeBasedTrigger"
+			if (!timeBasedTrigger) {
 				href "timeIntervalInput", title: "Only during a certain time", description: timeLabel ?: "Tap to set", state: timeLabel ? "complete" : "incomplete"
 			}
-            
+
 			input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -458,9 +458,9 @@ private String defaultLabel() {
 			break
 		case "At a Specific Time":
 			triggerLabel = "at ${hhmm(scheduledTime)}"
-            if (scheduledTimeFollowup) {
-            	triggerLabel += " and ${action == 'off' ? 'on' : 'off'} at ${hhmm(scheduledTimeFollowup)}"
-            }
+			if (scheduledTimeFollowup) {
+				triggerLabel += " and ${action == 'off' ? 'on' : 'off'} at ${hhmm(scheduledTimeFollowup)}"
+			}
 			break
 		case "When Mode Changes":
 			triggerLabel = "when mode changes to ${triggerModes.join(',','or')}"
