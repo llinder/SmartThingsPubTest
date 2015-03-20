@@ -185,8 +185,7 @@ def appTouchHandler(evt) {
 
 private takeAction(evt) {
 
-
-	if (frequency) {
+	if (frequency || oncePerDay) {
 		state[frequencyKey(evt)] = now()
 	}
 
@@ -267,12 +266,10 @@ private dayString(Date date) {
 	df.format(date)
 }
 
+
 private oncePerDayOk(Long lastTime) {
-	def result = true
-	if (oncePerDay) {
-		result = lastTime ? dayString(new Date()) != dayString(new Date(lastTime)) : true
-		log.trace "oncePerDayOk = $result"
-	}
+	def result = lastTime ? dayString(new Date()) != dayString(new Date(lastTime)) : true
+	log.trace "oncePerDayOk = $result - $lastTime"
 	result
 }
 
