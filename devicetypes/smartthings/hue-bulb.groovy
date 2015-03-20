@@ -15,6 +15,7 @@ metadata {
 		capability "Sensor"
 
 		command "setAdjustedColor"
+        command "reset"        
         command "refresh"
 	}
 
@@ -25,6 +26,9 @@ metadata {
 	standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
 		state "on", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821"
 		state "off", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff"
+	}
+	standardTile("reset", "device.reset", inactiveLabel: false, decoration: "flat") {
+		state "default", label:"Reset Color", action:"reset", icon:"st.lights.philips.hue-single"
 	}
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -52,7 +56,7 @@ metadata {
 	}
 
 	main(["switch"])
-	details(["switch", "levelSliderControl", "rgbSelector", "refresh"])
+	details(["switch", "levelSliderControl", "rgbSelector", "refresh", "reset"])
 
 }
 
@@ -121,9 +125,16 @@ def setColor(value) {
 	if (value.switch) { sendEvent(name: "switch", value: value.switch)}
 }
 
+def reset() {
+	log.debug "Executing 'reset'"
+    def value = [level:100, hex:"#90C638", saturation:56, hue:23]
+    setAdjustedColor(value)
+	parent.poll()
+}
+
 def setAdjustedColor(value) {
 	if (value) {
-        log.debug "setAdjustedColor: ${value}"
+        log.trace "setAdjustedColor: ${value}"
         def adjusted = value + [:]
         adjusted.hue = adjustOutgoingHue(value.hue)
         // Needed because color picker always sends 100
