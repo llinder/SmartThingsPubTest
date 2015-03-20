@@ -141,7 +141,8 @@ private takeAction(evt) {
 			"switch": it.currentValue("switch"),
 			"level" : it.currentValue("level"),
 			"hue": it.currentValue("hue"),
-			"saturation": it.currentValue("saturation")
+			"saturation": it.currentValue("saturation"),
+			"color": it.currentValue("color")			
 		]
 	}
 
@@ -181,8 +182,6 @@ def setTimer()
 def resetHue()
 {
 	hues.each {
-		it.setColor(state.previous[it.id])
+		it.setColor(state.previous[it.id])        
 	}
 }
-
-

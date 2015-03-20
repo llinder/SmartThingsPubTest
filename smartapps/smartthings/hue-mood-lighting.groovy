@@ -147,7 +147,7 @@ def subscribeToEvents() {
 }
 
 def eventHandler(evt) {
-	log.trace "eventHandler($evt.name: $evt.value)"
+	log.trace "Executing Mood Lighting"
 	if (allOk) {
 		log.trace "allOk"
 		def lastTime = state[frequencyKey(evt)]
@@ -176,7 +176,7 @@ def modeChangeHandler(evt) {
 
 def scheduledTimeHandler() {
 	log.trace "scheduledTimeHandler()"
-	eventHandler(null)
+	eventHandler()
 }
 
 def appTouchHandler(evt) {
@@ -185,8 +185,7 @@ def appTouchHandler(evt) {
 
 private takeAction(evt) {
 
-
-	if (frequency) {
+	if (frequency || oncePerDay) {
 		state[frequencyKey(evt)] = now()
 	}
 
@@ -267,12 +266,10 @@ private dayString(Date date) {
 	df.format(date)
 }
 
+
 private oncePerDayOk(Long lastTime) {
-	def result = true
-	if (oncePerDay) {
-		result = lastTime ? dayString(new Date()) != dayString(new Date(lastTime)) : true
-		log.trace "oncePerDayOk = $result"
-	}
+	def result = lastTime ? dayString(new Date()) != dayString(new Date(lastTime)) : true
+	log.trace "oncePerDayOk = $result - $lastTime"
 	result
 }
 
@@ -308,8 +305,8 @@ private getTimeOk() {
 	def result = true
 	if (starting && ending) {
 		def currTime = now()
-		def start = timeToday(starting).time
-		def stop = timeToday(ending).time
+		def start = timeToday(starting, location?.timeZone).time
+		def stop = timeToday(ending, location?.timeZone).time
 		result = start < stop ? currTime >= start && currTime <= stop : currTime <= stop || currTime >= start
 	}
 	log.trace "timeOk = $result"

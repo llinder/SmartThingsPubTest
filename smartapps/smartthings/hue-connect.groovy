@@ -227,20 +227,28 @@ def updated() {
 def initialize() {
 	// remove location subscription aftwards
 	log.debug "INITIALIZE"
+    unschedule()
 	state.subscribe = false
 	state.bridgeSelectedOverride = false
+	def bridge = null
 
 	if (selectedHue) {
 		addBridge()
+        bridge = getChildDevice(selectedHue)
 	}
+    
 	if (selectedBulbs) {
 		addBulbs()
 	}
-	if (selectedHue) {
-		def bridge = getChildDevice(selectedHue)
+	if (bridge) {
 		subscribe(bridge, "bulbList", bulbListHandler)
+		runEvery5Minutes("doDeviceSync")	        
 	}
-    runEvery5Minutes("doDeviceSync")
+}
+
+def uninstalled() { 
+    unschedule()
+	unsubscribe() 
 }
 
 // Handles events to add new bulbs
@@ -307,7 +315,7 @@ def addBridge() {
 		}
 		else
 		{
-			log.debug "found ${d.displayName} with id $dni already exists"
+			log.debug "found ${d.displayName} with id $selectedHue already exists"
 		}
 	}
 }
@@ -489,10 +497,12 @@ private def parseEventMessage(String description) {
 }
 
 def doDeviceSync(){
-	log.debug "Doing Hue Device Sync!"
-
+	log.trace "Doing Hue Device Sync!"
+ 
 	//shrink the large bulb lists
 	convertBulbListToMap()
+
+	poll()
 
 	if(!state.subscribe) {
 		subscribe(location, null, locationHandler, [filterEvents:false])
@@ -500,7 +510,6 @@ def doDeviceSync(){
 	}
 
 	discoverBridges()
-    poll()
 }
 
 

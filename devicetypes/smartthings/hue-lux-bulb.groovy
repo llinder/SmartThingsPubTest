@@ -12,6 +12,8 @@ metadata {
 		capability "Switch"
 		capability "Refresh"
 		capability "Sensor"
+       
+        command "refresh"       
 	}
 
 	simulator {
@@ -25,7 +27,7 @@ metadata {
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 	}
-	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
 		state "level", action:"switch level.setLevel"
 	}
 	valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {
@@ -51,9 +53,7 @@ def parse(description) {
 	if (map?.name && map?.value) {
 		results << createEvent(name: "${map?.name}", value: "${map?.value}")
 	}
-
 	results
-
 }
 
 // handle commands
@@ -67,21 +67,13 @@ def off() {
 	sendEvent(name: "switch", value: "off")
 }
 
-def poll() {
-	parent.poll(this)
-}
-
 def setLevel(percent) {
 	log.debug "Executing 'setLevel'"
 	parent.setLevel(this, percent)
 	sendEvent(name: "level", value: percent)
 }
 
-def save() {
-	log.debug "Executing 'save'"
-}
-
 def refresh() {
 	log.debug "Executing 'refresh'"
-	parent.poll(this)
+	parent.poll()
 }

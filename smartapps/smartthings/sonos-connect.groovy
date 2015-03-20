@@ -254,44 +254,39 @@ def locationHandler(evt) {
 				}
 			}
 		}
-	}
-	else if (parsedEvent.headers && parsedEvent.body)
-	{ // SONOS RESPONSES
+	} else if (parsedEvent.headers && parsedEvent.body) {
+		// SONOS RESPONSES
 		def headerString = new String(parsedEvent.headers.decodeBase64())
-		def bodyString = new String(parsedEvent.body.decodeBase64())
-
 		def type = (headerString =~ /Content-Type:.*/) ? (headerString =~ /Content-Type:.*/)[0] : null
-		def body
-		log.trace "SONOS REPONSE TYPE: $type"
-		if (type?.contains("xml"))
-		{ // description.xml response (application/xml)
-			body = new XmlSlurper().parseText(bodyString)
-
-			if (body?.device?.modelName?.text().startsWith("Sonos") && !body?.device?.modelName?.text().toLowerCase().contains("bridge") && !body?.device?.modelName?.text().contains("Sub"))
-			{
+		if (type?.contains("xml")) {
+			// description.xml response (application/xml)
+			def body = parseXmlBody(parsedEvent.body)
+			if (body?.device?.modelName?.text().startsWith("Sonos") && !body?.device?.modelName?.text().toLowerCase().contains("bridge") && !body?.device?.modelName?.text().contains("Sub")) {
 				def sonoses = getSonosPlayer()
 				def player = sonoses.find {it?.key?.contains(body?.device?.UDN?.text())}
-				if (player)
-				{
+				if (player) {
 					player.value << [name:body?.device?.roomName?.text(),model:body?.device?.modelName?.text(), serialNumber:body?.device?.serialNum?.text(), verified: true]
-				}
-				else
-				{
+				} else {
 					log.error "/xml/device_description.xml returned a device that didn't exist"
 				}
 			}
 		}
-		else if(type?.contains("json"))
-		{ //(application/json)
-			body = new groovy.json.JsonSlurper().parseText(bodyString)
-			log.trace "GOT JSON $body"
-		}
-
-	}
-	else {
+	} else {
 		log.trace "cp desc: " + description
-		//log.trace description
 	}
+}
+
+private def parseXmlBody(def body) {
+	def decodedBytes = body.decodeBase64()
+	def bodyString
+	try {
+		bodyString = new String(decodedBytes)
+	} catch (Exception e) {
+		// Keep this log for debugging StringIndexOutOfBoundsException issue
+		log.error("Exception decoding bytes in sonos connect: ${decodedBytes}")
+		throw e
+	}
+	return new XmlSlurper().parseText(bodyString)
 }
 
 private def parseEventMessage(Map event) {

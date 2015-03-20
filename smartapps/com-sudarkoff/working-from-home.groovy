@@ -69,7 +69,7 @@ def updated() {
 }
 
 def initialize() {
-    schedule(timeToday(timeOfDay, location.timeZone), "checkPresence")
+    schedule(timeToday(timeOfDay, location?.timeZone), "checkPresence")
     if (customName) {
       app.setTitle(customName)
     }

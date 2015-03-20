@@ -50,7 +50,7 @@ def initialize() {
 	def window = timeWindowMsec
 	[time1, time2, time3, time4].eachWithIndex {time, index ->
 		if (time != null) {
-			def endTime = new Date(timeToday(time).time + window)
+			def endTime = new Date(timeToday(time, location?.timeZone).time + window)
 			log.debug "Scheduling check at $endTime"
 			//runDaily(endTime, "scheduleCheck${index}")
 			switch (index) {

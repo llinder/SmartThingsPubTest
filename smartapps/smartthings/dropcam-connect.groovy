@@ -230,7 +230,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${singleJsonString.trim()}<"
 
-			def cam = new org.codehaus.groovy.grails.web.json.JSONObject(singleJsonString.trim())
+			def cam = new org.json.JSONObject(singleJsonString.trim())
 
 			log.debug "list: returning 1 Dropcam "
 
@@ -245,7 +245,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${singleJsonString.trim()}<"
 
-			def cam = new org.codehaus.groovy.grails.web.json.JSONObject(singleJsonString.trim())
+			def cam = new org.json.JSONObject(singleJsonString.trim())
 
 			log.debug "list: returning 1 Dropcam "
 
@@ -260,7 +260,7 @@ private List getCameraList()
 
 			log.debug "parsing json for single cam as >${listJsonString.trim()}<"
 
-			def a = new org.codehaus.groovy.grails.web.json.JSONArray(listJsonString.trim())
+			def a = new org.json.JSONArray(listJsonString.trim())
 
 			log.debug "list: returning ${a.size()} Dropcams "
 
@@ -402,31 +402,27 @@ private doTakePicture(String uuid, Integer imgWidth)
 		query: [width: imgWidth, uuid: uuid]
 	]
 
-
 	def loginRequired = false
 	def imageBytes
 
-	httpGet(takeParams) { resp ->
+	try {
+	    httpGet(takeParams) { resp ->
+            	if (resp.status == 403) {
+        	  loginRequired = true
+        	 } else if (resp.status == 200 && resp.headers.'Content-Type'.contains("image/jpeg")) {
+        	    imageBytes = resp.data
+        	 } else {
+        	     log.error "unknown takePicture() response: ${resp.status} - ${resp.headers.'Content-Type'}"
+        	 }
+            }
+        } catch (Exception e) {
+            log.error "device is offline"
+            sendNotification("Your dropcam is offline.")
+        }
 
-		if(resp.status == 403)
-		{
-			loginRequired = true
-		}
-		else if (resp.status == 200 && resp.headers.'Content-Type'.contains("image/jpeg"))
-		{
-			imageBytes = resp.data
-		}
-		else
-		{
-			log.error "unknown takePicture() response: ${resp.status} - ${resp.headers.'Content-Type'}"
-		}
+	if(loginRequired) {
+	    throw new Exception("Login Required")
 	}
-
-	if(loginRequired)
-	{
-		throw new Exception("Login Required")
-	}
-
 	return imageBytes
 }
 

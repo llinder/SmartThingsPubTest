@@ -11,20 +11,24 @@ metadata {
 		capability "Actuator"
 		capability "Color Control"
 		capability "Switch"
-		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
 
 		command "setAdjustedColor"
+        command "reset"        
+        command "refresh"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 
-	standardTile("switch", "device.switch", width: 1, height: 1, canChangeIcon: true) {
+	standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
 		state "on", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821"
 		state "off", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff"
+	}
+	standardTile("reset", "device.reset", inactiveLabel: false, decoration: "flat") {
+		state "default", label:"Reset Color", action:"reset", icon:"st.lights.philips.hue-single"
 	}
 	standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -32,7 +36,7 @@ metadata {
 	controlTile("rgbSelector", "device.color", "color", height: 3, width: 3, inactiveLabel: false) {
 		state "color", action:"setAdjustedColor"
 	}
-	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+	controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
 		state "level", action:"switch level.setLevel"
 	}
 	valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {
@@ -52,7 +56,7 @@ metadata {
 	}
 
 	main(["switch"])
-	details(["switch", "levelSliderControl", "rgbSelector", "refresh"])
+	details(["switch", "levelSliderControl", "rgbSelector", "refresh", "reset"])
 
 }
 
@@ -60,19 +64,15 @@ metadata {
 def parse(description) {
 	log.debug "parse() - $description"
 	def results = []
-
 	def map = description
 	if (description instanceof String)  {
 		log.debug "Hue Bulb stringToMap - ${map}"
 		map = stringToMap(description)
 	}
-
 	if (map?.name && map?.value) {
 		results << createEvent(name: "${map?.name}", value: "${map?.value}")
 	}
-
 	results
-
 }
 
 // handle commands
@@ -86,13 +86,9 @@ def off() {
 	sendEvent(name: "switch", value: "off")
 }
 
-def poll() {
-	parent.poll()
-}
-
 def nextLevel() {
 	def level = device.latestValue("level") as Integer ?: 0
-	if (level < 100) {
+	if (level <= 100) {
 		level = Math.min(25 * (Math.round(level / 25) + 1), 100) as Integer
 	}
 	else {
@@ -120,34 +116,31 @@ def setHue(percent) {
 }
 
 def setColor(value) {
-	log.debug "setColor: ${value}"
+	log.debug "setColor: ${value}, $this"
 	parent.setColor(this, value)
+	if (value.hue) { sendEvent(name: "hue", value: value.hue)}
+	if (value.saturation) { sendEvent(name: "saturation", value: value.saturation)}
+	if (value.hex) { sendEvent(name: "color", value: value.hex)}
+	if (value.level) { sendEvent(name: "level", value: value.level)}
+	if (value.switch) { sendEvent(name: "switch", value: value.switch)}
+}
 
-	if (value.hex) {
-		sendEvent(name: "color", value: value.hex)
-	} else if (value.hue && value.saturation) {
-		def hex = colorUtil.hslToHex(value.hue, value.saturation)
-		sendEvent(name: "color", value: hex)
-	}
-
-	if (value.level) {
-		sendEvent(name: "level", value: value.level)
-	}
-	if (value.switch) {
-		sendEvent(name: "switch", value: value.switch)
-	}
+def reset() {
+	log.debug "Executing 'reset'"
+    def value = [level:100, hex:"#90C638", saturation:56, hue:23]
+    setAdjustedColor(value)
+	parent.poll()
 }
 
 def setAdjustedColor(value) {
-	log.debug "setAdjustedColor: ${value}"
-	def adjusted = value + [:]
-	adjusted.hue = adjustOutgoingHue(value.hue)
-	adjusted.level = null // needed because color picker always sends 100
-	setColor(adjusted)
-}
-
-def save() {
-	log.debug "Executing 'save'"
+	if (value) {
+        log.trace "setAdjustedColor: ${value}"
+        def adjusted = value + [:]
+        adjusted.hue = adjustOutgoingHue(value.hue)
+        // Needed because color picker always sends 100
+        adjusted.level = null 
+        setColor(adjusted)
+    }
 }
 
 def refresh() {

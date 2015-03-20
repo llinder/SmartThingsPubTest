@@ -33,11 +33,16 @@ metadata {
 
 // Parse incoming device messages to generate events
 def parse(String description) {
-	def name = description?.startsWith("on/off: ") ? "switch" : null
-	def value = name == "switch" ? (description?.endsWith(" 1") ? "on" : "off") : null
-	def result = createEvent(name: name, value: value)
-	log.debug "Parse returned ${result?.descriptionText}"
-	return result
+	if (description?.startsWith("catchall: 0104 000A")) {
+		log.debug "Dropping catchall for SmartPower Outlet"
+		return []
+	} else {
+		def name = description?.startsWith("on/off: ") ? "switch" : null
+		def value = name == "switch" ? (description?.endsWith(" 1") ? "on" : "off") : null
+		def result = createEvent(name: name, value: value)
+		log.debug "Parse returned ${result?.descriptionText}"
+		return result
+	}
 }
 
 // Commands to device
