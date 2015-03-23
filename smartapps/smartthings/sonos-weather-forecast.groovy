@@ -2,6 +2,7 @@
  *  Sonos Weather Forecast
  *
  *  Author: SmartThings
+ *
  *  Date: 2014-1-29
  */
 definition(
